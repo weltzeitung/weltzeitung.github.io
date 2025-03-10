@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Dots and Boxes mit KI</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f6f9fc, #e9eff5);
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+    }
+    .controls {
+      margin: 20px;
+    }
+    .controls input {
+      width: 60px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+    }
+    .controls button {
+      background: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 15px;
+      margin: 0 5px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .controls button:hover {
+      background: #45a049;
+    }
+    #status {
+      margin: 10px;
+      font-size: 1.2em;
+      color: #555;
+    }
+    canvas {
+      border: 2px solid #333;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      background: white;
+      border-radius: 10px;
+      transition: transform 0.3s;
+      margin-top: 20px;
+    }
+    canvas:hover {
+      transform: scale(1.02);
+    }
+  </style>
+</head>
+<body>
+  <h1>Dots and Boxes – Spiel gegen die KI</h1>
+  <div class="controls">
+    <label for="gridSizeInput">Feldgröße (Punkte pro Reihe):</label>
+    <input type="number" id="gridSizeInput" value="4" min="3" max="10">
+    <button id="newGameBtn">Neues Spiel starten</button>
+    <button id="resetBtn">Reset</button>
+  </div>
+  <div id="status">Spieler: Mensch</div>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusDiv = document.getElementById('status');
+    const gridSizeInput = document.getElementById('gridSizeInput');
+    const newGameBtn = document.getElementById('newGameBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let gridSize, margin, spacing, dotRadius, edgeThreshold;
+    let currentPlayer, score, gameOver;
+    let horizontalEdges, verticalEdges, boxes;
+    let animating = false; // Verhindert Eingaben während Animationen
+
+    // Initialisiert das Spiel anhand der aktuellen Einstellungen
+    function initGame() {
+      gridSize = parseInt(gridSizeInput.value);
+      margin = 50;
+      spacing = (canvas.width - 2 * margin) / (gridSize - 1);
+      dotRadius = 5;
+      edgeThreshold = 10;
+      currentPlayer = 1; // 1: Mensch, 2: KI
+      score = { 1: 0, 2: 0 };
+      gameOver = false;
+      animating = false;
+      
+      horizontalEdges = [];
+      for (let i = 0; i < gridSize; i++) {
+        horizontalEdges[i] = [];
+        for (let j = 0; j < gridSize - 1; j++) {
+          horizontalEdges[i][j] = 0;
+        }
+      }
+      verticalEdges = [];
+      for (let i = 0; i < gridSize - 1; i++) {
+        verticalEdges[i] = [];
+        for (let j = 0; j < gridSize; j++) {
+          verticalEdges[i][j] = 0;
+        }
+      }
+      boxes = [];
+      for (let i = 0; i < gridSize - 1; i++) {
+        boxes[i] = [];
+        for (let j = 0; j < gridSize - 1; j++) {
+          boxes[i][j] = 0;
+        }
+      }
+      drawBoard();
+    }
+
+    // Zeichnet das gesamte Spielfeld
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Besetzte Felder zeichnen
+      for (let i = 0; i < gridSize - 1; i++) {
+        for (let j = 0; j < gridSize - 1; j++) {
+          if (boxes[i][j] !== 0) {
+            ctx.fillStyle = boxes[i][j] === 1 ? 'rgba(0, 0, 255, 0.3)' : 'rgba(255, 0, 0, 0.3)';
+            const x = margin + j * spacing;
+            const y = margin + i * spacing;
+            ctx.fillRect(x + dotRadius, y + dotRadius, spacing - dotRadius * 2, spacing - dotRadius * 2);
+          }
+        }
+      }
+      
+      // Hilfslinien für ungezogene horizontale Kanten
+      for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize - 1; j++) {
+          if (horizontalEdges[i][j] === 0) {
+            const x1 = margin + j * spacing;
+            const y1 = margin + i * spacing;
+            const x2 = margin + (j + 1) * spacing;
+            ctx.strokeStyle = 'lightgrey';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y1);
+            ctx.stroke();
+          }
+        }
+      }
+      
+      // Hilfslinien für ungezogene vertikale Kanten
+      for (let i = 0; i < gridSize - 1; i++) {
+        for (let j = 0; j < gridSize; j++) {
+          if (verticalEdges[i][j] === 0) {
+            const x1 = margin + j * spacing;
+            const y1 = margin + i * spacing;
+            const y2 = margin + (i + 1) * spacing;
+            ctx.strokeStyle = 'lightgrey';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x1, y2);
+            ctx.stroke();
+          }
+        }
+      }
+      
+      // Gezogene horizontale Kanten zeichnen
+      for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize - 1; j++) {
+          if (horizontalEdges[i][j] !== 0) {
+            const x1 = margin + j * spacing;
+            const y1 = margin + i * spacing;
+            const x2 = margin + (j + 1) * spacing;
+            ctx.strokeStyle = horizontalEdges[i][j] === 1 ? 'blue' : 'red';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y1);
+            ctx.stroke();
+          }
+        }
+      }
+      
+      // Gezogene vertikale Kanten zeichnen
+      for (let i = 0; i < gridSize - 1; i++) {
+        for (let j = 0; j < gridSize; j++) {
+          if (verticalEdges[i][j] !== 0) {
+            const x1 = margin + j * spacing;
+            const y1 = margin + i * spacing;
+            const y2 = margin + (i + 1) * spacing;
+            ctx.strokeStyle = verticalEdges[i][j] === 1 ? 'blue' : 'red';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x1, y2);
+            ctx.stroke();
+          }
+        }
+      }
+      
+      // Punkte zeichnen
+      for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+          const x = margin + j * spacing;
+          const y = margin + i * spacing;
+          ctx.fillStyle = 'black';
+          ctx.beginPath();
+          ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      // Status aktualisieren
+      statusDiv.innerText = gameOver
+        ? "Spiel vorbei! Endstand – Mensch: " + score[1] + " | KI: " + score[2]
+        : (currentPlayer === 1 ? "Spieler: Mensch" : "Spieler: KI (überlegt...)") +
+          " – Punktestand: Mensch " + score[1] + " - KI " + score[2];
+    }
+    
+    // Animiert das Zeichnen einer neuen Kante
+    function animateEdge(edge, player, callback) {
+      let startTime = null;
+      const duration = 300; // Dauer der Animation in Millisekunden
+      let startPoint, endPoint;
+      if (edge.type === 'h') {
+        startPoint = { x: margin + edge.j * spacing, y: margin + edge.i * spacing };
+        endPoint = { x: margin + (edge.j + 1) * spacing, y: margin + edge.i * spacing };
+      } else {
+        startPoint = { x: margin + edge.j * spacing, y: margin + edge.i * spacing };
+        endPoint = { x: margin + edge.j * spacing, y: margin + (edge.i + 1) * spacing };
+      }
+      function drawFrame(timestamp) {
+        if (!startTime) startTime = timestamp;
+        let progress = Math.min((timestamp - startTime) / duration, 1);
+        drawBoard();
+        ctx.strokeStyle = player === 1 ? 'blue' : 'red';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(startPoint.x, startPoint.y);
+        let currentX = startPoint.x + (endPoint.x - startPoint.x) * progress;
+        let currentY = startPoint.y + (endPoint.y - startPoint.y) * progress;
+        ctx.lineTo(currentX, currentY);
+        ctx.stroke();
+        if (progress < 1) {
+          requestAnimationFrame(drawFrame);
+        } else {
+          callback();
+        }
+      }
+      requestAnimationFrame(drawFrame);
+    }
+    
+    // Wendet einen Zug an und aktualisiert den Spielzustand
+    function processMove(move, doneCallback) {
+      if (move.type === 'h') {
+        horizontalEdges[move.i][move.j] = currentPlayer;
+      } else {
+        verticalEdges[move.i][move.j] = currentPlayer;
+      }
+      let completed = checkCompletedBoxes(currentPlayer);
+      if (!completed) {
+        currentPlayer = currentPlayer === 1 ? 2 : 1;
+      }
+      if (checkGameOver()) {
+        gameOver = true;
+      }
+      drawBoard();
+      doneCallback(completed);
+    }
+    
+    // Führt Animation und Zug aus
+    function makeMove(move, callback) {
+      animating = true;
+      animateEdge(move, currentPlayer, function() {
+        processMove(move, function(completed) {
+          animating = false;
+          callback(completed);
+        });
+      });
+    }
+    
+    // Berechnet den Abstand eines Punktes zur Linie
+    function distanceToSegment(px, py, x1, y1, x2, y2) {
+      const A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
+      const dot = A * C + B * D;
+      const lenSq = C * C + D * D;
+      let param = lenSq !== 0 ? dot / lenSq : -1;
+      let xx, yy;
+      if (param < 0) {
+        xx = x1; yy = y1;
+      } else if (param > 1) {
+        xx = x2; yy = y2;
+      } else {
+        xx = x1 + param * C;
+        yy = y1 + param * D;
+      }
+      const dx = px - xx, dy = py - yy;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    // Ermittelt, welche Kante angeklickt wurde
+    function getClickedEdge(x, y) {
+      for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize - 1; j++) {
+          const x1 = margin + j * spacing;
+          const y1 = margin + i * spacing;
+          const x2 = margin + (j + 1) * spacing;
+          if (distanceToSegment(x, y, x1, y1, x2, y1) < edgeThreshold && horizontalEdges[i][j] === 0) {
+            return { type: 'h', i: i, j: j };
+          }
+        }
+      }
+      for (let i = 0; i < gridSize - 1; i++) {
+        for (let j = 0; j < gridSize; j++) {
+          const x1 = margin + j * spacing;
+          const y1 = margin + i * spacing;
+          const y2 = margin + (i + 1) * spacing;
+          if (distanceToSegment(x, y, x1, y1, x1, y2) < edgeThreshold && verticalEdges[i][j] === 0) {
+            return { type: 'v', i: i, j: j };
+          }
+        }
+      }
+      return null;
+    }
+    
+    function checkCompletedBoxes(player) {
+      let boxCompleted = false;
+      for (let i = 0; i < gridSize - 1; i++) {
+        for (let j = 0; j < gridSize - 1; j++) {
+          if (boxes[i][j] === 0) {
+            const top    = horizontalEdges[i][j];
+            const bottom = horizontalEdges[i+1][j];
+            const left   = verticalEdges[i][j];
+            const right  = verticalEdges[i][j+1];
+            if (top && bottom && left && right) {
+              boxes[i][j] = player;
+              score[player]++;
+              boxCompleted = true;
+            }
+          }
+        }
+      }
+      return boxCompleted;
+    }
+    
+    function checkGameOver() {
+      const totalBoxes = (gridSize - 1) * (gridSize - 1);
+      return (score[1] + score[2] === totalBoxes);
+    }
+    
+    // Menschlicher Zug per Mausklick
+    canvas.addEventListener('click', function(e) {
+      if (gameOver || currentPlayer !== 1 || animating) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const edge = getClickedEdge(x, y);
+      if (edge) {
+        makeMove(edge, function(completed) {
+          if (!completed && currentPlayer === 2 && !gameOver) {
+            setTimeout(aiTurn, 500);
+          }
+        });
+      }
+    });
+    
+    // Einfache KI-Logik
+    function aiTurn() {
+      if (gameOver) return;
+      let moves = [];
+      for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize - 1; j++) {
+          if (horizontalEdges[i][j] === 0) {
+            moves.push({ type: 'h', i: i, j: j });
+          }
+        }
+      }
+      for (let i = 0; i < gridSize - 1; i++) {
+        for (let j = 0; j < gridSize; j++) {
+          if (verticalEdges[i][j] === 0) {
+            moves.push({ type: 'v', i: i, j: j });
+          }
+        }
+      }
+      
+      let completingMoves = moves.filter(move => {
+        let affectedBoxes = [];
+        if (move.type === 'h') {
+          if (move.i > 0) affectedBoxes.push({ i: move.i - 1, j: move.j });
+          if (move.i < gridSize - 1) affectedBoxes.push({ i: move.i, j: move.j });
+        } else {
+          if (move.j > 0) affectedBoxes.push({ i: move.i, j: move.j - 1 });
+          if (move.j < gridSize - 1) affectedBoxes.push({ i: move.i, j: move.j });
+        }
+        for (let box of affectedBoxes) {
+          let count = 0;
+          count += horizontalEdges[box.i][box.j] ? 1 : 0;
+          count += horizontalEdges[box.i+1][box.j] ? 1 : 0;
+          count += verticalEdges[box.i][box.j] ? 1 : 0;
+          count += verticalEdges[box.i][box.j+1] ? 1 : 0;
+          if (count === 3) return true;
+        }
+        return false;
+      });
+      
+      if (completingMoves.length > 0) {
+        moves = completingMoves;
+      } else {
+        let safeMoves = moves.filter(move => {
+          let affectedBoxes = [];
+          if (move.type === 'h') {
+            if (move.i > 0) affectedBoxes.push({ i: move.i - 1, j: move.j });
+            if (move.i < gridSize - 1) affectedBoxes.push({ i: move.i, j: move.j });
+          } else {
+            if (move.j > 0) affectedBoxes.push({ i: move.i, j: move.j - 1 });
+            if (move.j < gridSize - 1) affectedBoxes.push({ i: move.i, j: move.j });
+          }
+          for (let box of affectedBoxes) {
+            let count = 0;
+            count += horizontalEdges[box.i][box.j] ? 1 : 0;
+            count += horizontalEdges[box.i+1][box.j] ? 1 : 0;
+            count += verticalEdges[box.i][box.j] ? 1 : 0;
+            count += verticalEdges[box.i][box.j+1] ? 1 : 0;
+            if (count === 2) return false;
+          }
+          return true;
+        });
+        if (safeMoves.length > 0) {
+          moves = safeMoves;
+        }
+      }
+      
+      const move = moves[Math.floor(Math.random() * moves.length)];
+      makeMove(move, function(completed) {
+        if (currentPlayer === 2 && !gameOver) {
+          setTimeout(aiTurn, 500);
+        }
+      });
+    }
+    
+    newGameBtn.addEventListener('click', initGame);
+    resetBtn.addEventListener('click', initGame);
+    
+    initGame();
+  </script>
+</body>
+</html>
