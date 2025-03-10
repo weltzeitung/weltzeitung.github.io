@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Meta Tic Tac Toe</title>
+  <style>
+    /* Container für das übergeordnete (Meta) Brett */
+    #meta-board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      width: 600px;
+      margin: 20px auto;
+    }
+    /* Jedes kleine Brett */
+    .small-board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      border: 2px solid #333;
+      background-color: #f9f9f9;
+      position: relative;
+    }
+    /* Markierung des aktiven kleinen Brettes */
+    .small-board.active {
+      border-color: red;
+    }
+    /* Einzelne Zellen */
+    .cell {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 32px;
+      background: #fff;
+      border: 1px solid #999;
+      cursor: pointer;
+    }
+    .cell.disabled {
+      cursor: default;
+      background: #eee;
+    }
+    #status {
+      text-align: center;
+      font-size: 24px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="meta-board"></div>
+  <div id="status">Dein Zug (X)</div>
+  
+  <script>
+    // Gewinnkombinationen (Zeilen, Spalten, Diagonalen)
+    const winCombos = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6]
+    ];
+    
+    // Spielzustände: 9 kleine Bretter, jedes als Array von 9 Zellen (null = leer)
+    let boards = Array(9).fill(null).map(() => Array(9).fill(null));
+    // Status der kleinen Bretter: "X", "O" oder "draw", falls entschieden oder voll
+    let boardStatus = Array(9).fill(null);
+    // Welches kleine Brett ist aktiv? (-1 = frei wählbar)
+    let activeBoard = -1;
+    // Startspieler: X (Spieler) vs. O (KI)
+    let currentPlayer = "X";
+    let gameOver = false;
+    
+    const metaBoardElem = document.getElementById("meta-board");
+    const statusElem = document.getElementById("status");
+    
+    // Erzeuge das Spielfeld (Meta-Brett mit 9 kleinen Brettern)
+    function createBoard() {
+      metaBoardElem.innerHTML = "";
+      for (let b = 0; b < 9; b++) {
+        const boardDiv = document.createElement("div");
+        boardDiv.classList.add("small-board");
+        boardDiv.setAttribute("data-board", b);
+        for (let c = 0; c < 9; c++) {
+          const cellDiv = document.createElement("div");
+          cellDiv.classList.add("cell");
+          cellDiv.setAttribute("data-board", b);
+          cellDiv.setAttribute("data-cell", c);
+          cellDiv.addEventListener("click", onCellClick);
+          boardDiv.appendChild(cellDiv);
+        }
+        metaBoardElem.appendChild(boardDiv);
+      }
+      updateActiveBoardUI();
+    }
+    
+    // Hebe das aktive kleine Brett hervor
+    function updateActiveBoardUI() {
+      const boardsElems = document.querySelectorAll(".small-board");
+      boardsElems.forEach(boardElem => {
+        const boardIndex = parseInt(boardElem.getAttribute("data-board"));
+        if (activeBoard === -1) {
+          if (boardStatus[boardIndex] === null) {
+            boardElem.classList.add("active");
+          } else {
+            boardElem.classList.remove("active");
+          }
+        } else {
+          if (boardIndex === activeBoard && boardStatus[boardIndex] === null) {
+            boardElem.classList.add("active");
+          } else {
+            boardElem.classList.remove("active");
+          }
+        }
+      });
+    }
+    
+    // Reagiere auf Klicks eines Spielers
+    function onCellClick(event) {
+      if (gameOver) return;
+      const boardIndex = parseInt(event.target.getAttribute("data-board"));
+      const cellIndex = parseInt(event.target.getAttribute("data-cell"));
+      
+      // Zug nur in aktivem Brett und in einer leeren Zelle
+      if (activeBoard !== -1 && boardIndex !== activeBoard) return;
+      if (boards[boardIndex][cellIndex] !== null) return;
+      if (boardStatus[boardIndex] !== null) return;
+      
+      // Spielerzug ausführen
+      makeMove(boardIndex, cellIndex, currentPlayer);
+      
+      // Falls das Spiel nicht beendet ist, wechsle zur KI
+      if (!gameOver) {
+        currentPlayer = "O";
+        statusElem.textContent = "KI's Zug (O)";
+        setTimeout(aiMove, 500);
+      }
+    }
+    
+    // Führt einen Zug aus und aktualisiert den Zustand
+    function makeMove(boardIndex, cellIndex, player) {
+      boards[boardIndex][cellIndex] = player;
+      updateCellUI(boardIndex, cellIndex, player);
+      
+      // Prüfe, ob ein kleines Brett gewonnen wurde
+      let winner = checkWinner(boards[boardIndex]);
+      if (winner) {
+        boardStatus[boardIndex] = winner;
+        markBoardWon(boardIndex, winner);
+      } else if (isBoardFull(boards[boardIndex])) {
+        boardStatus[boardIndex] = "draw";
+        markBoardDraw(boardIndex);
+      }
+      
+      // Prüfe, ob das Meta-Spiel (Gesamtbrett) gewonnen wurde
+      let metaWinner = checkWinner(boardStatus);
+      if (metaWinner) {
+        statusElem.textContent = metaWinner + " gewinnt das Spiel!";
+        gameOver = true;
+        return;
+      } else if (boardStatus.filter(s => s === null).length === 0) {
+        statusElem.textContent = "Unentschieden!";
+        gameOver = true;
+        return;
+      }
+      
+      // Nächstes aktives Brett: entspricht der Zelle, die gerade besetzt wurde,
+      // sofern dieses Brett noch nicht entschieden ist. Andernfalls frei wählbar.
+      if (boardStatus[cellIndex] === null) {
+        activeBoard = cellIndex;
+      } else {
+        activeBoard = -1;
+      }
+      updateActiveBoardUI();
+      
+      // Aktualisiere die Anzeige des nächsten Spielers
+      statusElem.textContent = player === "X" ? "KI's Zug (O)" : "Dein Zug (X)";
+    }
+    
+    // Aktualisiert die Anzeige einer einzelnen Zelle
+    function updateCellUI(boardIndex, cellIndex, player) {
+      const cellElem = document.querySelector('.cell[data-board="' + boardIndex + '"][data-cell="' + cellIndex + '"]');
+      if (cellElem) {
+        cellElem.textContent = player;
+        cellElem.classList.add("disabled");
+      }
+    }
+    
+    // Hebe ein gewonnenes kleines Brett farblich hervor
+    function markBoardWon(boardIndex, winner) {
+      const boardElem = document.querySelector('.small-board[data-board="' + boardIndex + '"]');
+      if (boardElem) {
+        boardElem.style.backgroundColor = winner === "X" ? "rgba(0, 255, 0, 0.2)" : "rgba(255, 0, 0, 0.2)";
+      }
+    }
+    
+    // Markiere ein kleines Brett als unentschieden
+    function markBoardDraw(boardIndex) {
+      const boardElem = document.querySelector('.small-board[data-board="' + boardIndex + '"]');
+      if (boardElem) {
+        boardElem.style.backgroundColor = "rgba(128, 128, 128, 0.2)";
+      }
+    }
+    
+    // Prüft, ob in einem Array (kleines Brett oder Meta-Brett) jemand gewonnen hat
+    function checkWinner(cells) {
+      for (let combo of winCombos) {
+        const [a, b, c] = combo;
+        if (cells[a] && cells[a] === cells[b] && cells[a] === cells[c]) {
+          return cells[a];
+        }
+      }
+      return null;
+    }
+    
+    // Prüft, ob ein Brett voll ist
+    function isBoardFull(board) {
+      return board.every(cell => cell !== null);
+    }
+    
+    // KI-Zug: Wählt per Zufall einen der erlaubten Züge
+    function aiMove() {
+      if (gameOver) return;
+      
+      // Erlaubte Bretter: entweder das aktive Brett oder alle, die noch nicht entschieden sind
+      let allowedBoards = [];
+      if (activeBoard === -1) {
+        for (let i = 0; i < 9; i++) {
+          if (boardStatus[i] === null) allowedBoards.push(i);
+        }
+      } else {
+        allowedBoards = [activeBoard];
+      }
+      // Sammle alle möglichen Züge aus den erlaubten Brettern
+      let moves = [];
+      for (let b of allowedBoards) {
+        for (let c = 0; c < 9; c++) {
+          if (boards[b][c] === null) {
+            moves.push({ board: b, cell: c });
+          }
+        }
+      }
+      if (moves.length === 0) return;
+      
+      // Wähle zufällig einen Zug aus
+      let move = moves[Math.floor(Math.random() * moves.length)];
+      makeMove(move.board, move.cell, "O");
+      
+      if (!gameOver) {
+        currentPlayer = "X";
+        statusElem.textContent = "Dein Zug (X)";
+      }
+    }
+    
+    // Starte das Spiel
+    createBoard();
+  </script>
+</body>
+</html>
