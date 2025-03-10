@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe mit KI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            text-align: center;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            width: 90%;
+            max-width: 350px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        .difficulty {
+            margin-bottom: 20px;
+        }
+
+        select {
+            font-size: 1rem;
+            padding: 5px;
+            width: 100%;
+        }
+
+        .game-board {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+
+        .row {
+            display: flex;
+            gap: 5px;
+        }
+
+        .cell {
+            width: 30%;
+            height: 0;
+            padding-top: 30%;
+            background-color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            cursor: pointer;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .cell:hover {
+            background-color: #d0d0d0;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .game-info p {
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Tic-Tac-Toe</h1>
+        <div class="difficulty">
+            <label for="difficulty">Wählen Sie die Schwierigkeit:</label>
+            <select id="difficulty">
+                <option value="easy">Leicht</option>
+                <option value="medium">Mittel</option>
+                <option value="hard">Schwer</option>
+            </select>
+        </div>
+        <div class="game-board">
+            <div class="row">
+                <div class="cell" id="0"></div>
+                <div class="cell" id="1"></div>
+                <div class="cell" id="2"></div>
+            </div>
+            <div class="row">
+                <div class="cell" id="3"></div>
+                <div class="cell" id="4"></div>
+                <div class="cell" id="5"></div>
+            </div>
+            <div class="row">
+                <div class="cell" id="6"></div>
+                <div class="cell" id="7"></div>
+                <div class="cell" id="8"></div>
+            </div>
+        </div>
+        <div class="game-info">
+            <p id="gameStatus">Dein Zug!</p>
+            <button id="resetButton">Neues Spiel</button>
+        </div>
+    </div>
+
+    <script>
+        const board = document.querySelectorAll('.cell');
+        const gameStatus = document.getElementById('gameStatus');
+        const resetButton = document.getElementById('resetButton');
+        const difficultySelect = document.getElementById('difficulty');
+
+        let boardState = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X'; 
+        let gameOver = false;
+        let difficulty = 'easy';
+
+        difficultySelect.addEventListener('change', () => {
+            difficulty = difficultySelect.value;
+            resetGame();
+        });
+
+        board.forEach(cell => {
+            cell.addEventListener('click', handleClick);
+        });
+
+        resetButton.addEventListener('click', resetGame);
+
+        function handleClick(event) {
+            const id = event.target.id;
+            if (boardState[id] === '' && !gameOver) {
+                boardState[id] = currentPlayer;
+                event.target.textContent = currentPlayer;
+
+                if (checkWinner(currentPlayer)) {
+                    gameStatus.textContent = `${currentPlayer} gewinnt!`;
+                    gameOver = true;
+                } else if (boardState.every(cell => cell !== '')) {
+                    gameStatus.textContent = 'Unentschieden!';
+                    gameOver = true;
+                } else {
+                    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                    gameStatus.textContent = `Spieler ${currentPlayer} ist am Zug!`;
+
+                    if (currentPlayer === 'O' && !gameOver) {
+                        setTimeout(aiMove, 500);
+                    }
+                }
+            }
+        }
+
+        function aiMove() {
+            let bestMove;
+            if (difficulty === 'easy') {
+                bestMove = easyMove();
+            } else if (difficulty === 'medium') {
+                bestMove = mediumMove();
+            } else if (difficulty === 'hard') {
+                bestMove = hardMove();
+            }
+
+            boardState[bestMove] = 'O';
+            document.getElementById(bestMove).textContent = 'O';
+
+            if (checkWinner('O')) {
+                gameStatus.textContent = 'O gewinnt!';
+                gameOver = true;
+            } else if (boardState.every(cell => cell !== '')) {
+                gameStatus.textContent = 'Unentschieden!';
+                gameOver = true;
+            } else {
+                currentPlayer = 'X';
+                gameStatus.textContent = "Dein Zug!";
+            }
+        }
+
+        function easyMove() {
+            const emptyCells = boardState.map((cell, index) => cell === '' ? index : null).filter(index => index !== null);
+            return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        }
+
+        function mediumMove() {
+            return Math.random() < 0.5 ? easyMove() : hardMove();
+        }
+
+        function hardMove() {
+            return minimax(boardState, 'O').index;
+        }
+
+        function minimax(newBoard, player) {
+            const availableSpots = newBoard.map((cell, index) => cell === '' ? index : null).filter(index => index !== null);
+            if (checkWinner('X')) return { score: -10 };
+            if (checkWinner('O')) return { score: 10 };
+            if (availableSpots.length === 0) return { score: 0 };
+
+            let moves = [];
+            for (let i of availableSpots) {
+                let move = {};
+                move.index = i;
+                newBoard[i] = player;
+
+                if (player === 'O') {
+                    move.score = minimax(newBoard, 'X').score;
+                } else {
+                    move.score = minimax(newBoard, 'O').score;
+                }
+
+                newBoard[i] = '';
+                moves.push(move);
+            }
+
+            return moves.reduce((best, move) => player === 'O' ? (move.score > best.score ? move : best) : (move.score < best.score ? move : best));
+        }
+
+        function checkWinner(player) {
+            return [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]].some(pattern => pattern.every(index => boardState[index] === player));
+        }
+
+        function resetGame() {
+            boardState.fill('');
+            gameOver = false;
+            currentPlayer = 'X';
+            gameStatus.textContent = "Dein Zug!";
+            board.forEach(cell => cell.textContent = '');
+        }
+    </script>
+</body>
+</html>
