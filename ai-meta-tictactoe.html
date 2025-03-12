@@ -51,6 +51,11 @@
       text-align: center;
       margin-top: 10px;
     }
+    /* Reset-Button */
+    #reset-container {
+      text-align: center;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -63,6 +68,9 @@
       <option value="mittel" selected>Mittel</option>
       <option value="schwer">Schwer</option>
     </select>
+  </div>
+  <div id="reset-container">
+    <button id="reset">Neues Spiel</button>
   </div>
   
   <script>
@@ -236,7 +244,7 @@
       return board.every(cell => cell !== null);
     }
     
-    // Hilfsfunktionen für die KI
+    // Hilfsfunktion: Zufälliger Zug aus einer Liste von Zügen
     function randomMove(moves) {
       return moves[Math.floor(Math.random() * moves.length)];
     }
@@ -253,7 +261,7 @@
       return null;
     }
     
-    // Bei schwerer Schwierigkeit: einfache Heuristik, die Center und Ecken bevorzugt
+    // Eine einfache Heuristik für "leichte" Prioritäten (Mitte, Ecken)
     function getBestMove(moves) {
       let centerMoves = moves.filter(m => m.cell === 4);
       if (centerMoves.length) return centerMoves[0];
@@ -262,7 +270,71 @@
       return null;
     }
     
-    // KI-Zug: Wählt den Zug basierend auf dem gewählten Schwierigkeitsgrad aus
+    // Zählt in einem Brett, wie oft der Spieler in einer Gewinnkombination 2 von 3 hat
+    function countTwoInRow(board, player) {
+      let count = 0;
+      for (let combo of winCombos) {
+        let line = combo.map(i => board[i]);
+        let playerCount = line.filter(cell => cell === player).length;
+        let emptyCount = line.filter(cell => cell === null).length;
+        if (playerCount === 2 && emptyCount === 1) {
+          count++;
+        }
+      }
+      return count;
+    }
+    
+    // Erweiterte Bewertung eines Zuges – für einen ein-Schritt-Lookahead
+    function evaluateMove(move) {
+      let score = 0;
+      // Simuliere den Zug im kleinen Brett:
+      let boardCopy = boards[move.board].slice();
+      boardCopy[move.cell] = "O";
+      // Bonus, falls der Zug das kleine Brett gewinnt:
+      if (checkWinner(boardCopy) === "O") {
+        score += 100;
+      }
+      
+      // Bonus, falls der Zug einen möglichen Gewinn des Gegners blockiert:
+      let boardCopy2 = boards[move.board].slice();
+      boardCopy2[move.cell] = "X";
+      if (checkWinner(boardCopy2) === "X") {
+        score += 80;
+      }
+      
+      // Bonus für die Mitte im kleinen Brett
+      if (move.cell === 4) {
+        score += 10;
+      }
+      // Bonus für Eckfelder
+      if ([0,2,6,8].includes(move.cell)) {
+        score += 5;
+      }
+      
+      // Bestimme das nächste aktive Brett nach diesem Zug
+      let nextActive = (boardStatus[move.cell] === null) ? move.cell : -1;
+      if (nextActive !== -1) {
+        // Falls im nächsten aktiven Brett hat der Gegner gute Chancen (2 in einer Reihe), Strafe:
+        score -= countTwoInRow(boards[nextActive], "X") * 15;
+      }
+      return score;
+    }
+    
+    // Sucht den besten Zug mittels der erweiterten Bewertung
+    function getAdvancedMove(moves) {
+      let bestMove = null;
+      let bestScore = -Infinity;
+      for (let move of moves) {
+        let score = evaluateMove(move);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = move;
+        }
+      }
+      return bestMove;
+    }
+    
+    // KI-Zug: Wählt den Zug basierend auf dem Schwierigkeitsgrad aus
     function aiMove() {
       if (gameOver) return;
       
@@ -301,13 +373,13 @@
           move = randomMove(moves);
         }
       } else if (difficulty === "schwer") {
-        // Zuerst Gewinnzug, dann blocken, danach beste Heuristik, ansonsten zufällig
+        // Zuerst Gewinnzug, dann blockieren, danach mittels erweiteter Bewertung den besten Zug wählen
         move = getWinningOrBlockingMove("O", moves);
         if (!move) {
           move = getWinningOrBlockingMove("X", moves);
         }
         if (!move) {
-          move = getBestMove(moves);
+          move = getAdvancedMove(moves);
         }
         if (!move) {
           move = randomMove(moves);
@@ -324,6 +396,20 @@
         statusElem.textContent = "Dein Zug (X)";
       }
     }
+    
+    // Reset-Funktion: Setzt alle Spielvariablen zurück und erstellt das Spielfeld neu
+    function resetGame() {
+      boards = Array(9).fill(null).map(() => Array(9).fill(null));
+      boardStatus = Array(9).fill(null);
+      activeBoard = -1;
+      currentPlayer = "X";
+      gameOver = false;
+      statusElem.textContent = "Dein Zug (X)";
+      createBoard();
+    }
+    
+    // Eventlistener für den Reset-Button
+    document.getElementById("reset").addEventListener("click", resetGame);
     
     // Starte das Spiel
     createBoard();
