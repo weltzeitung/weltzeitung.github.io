@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Mancala AI Spiel</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; }
+    #gameBoard { margin: 20px auto; width: 600px; }
+    .row { display: flex; justify-content: center; margin: 10px; }
+    .pit {
+      width: 80px;
+      height: 80px;
+      border: 2px solid #333;
+      border-radius: 50%;
+      line-height: 80px;
+      text-align: center;
+      font-size: 24px;
+      margin: 5px;
+      background-color: #f2f2f2;
+      cursor: pointer;
+    }
+    .pit.disabled { cursor: default; background-color: #ddd; }
+    .store {
+      width: 80px;
+      height: 180px;
+      border: 2px solid #333;
+      border-radius: 10px;
+      line-height: 180px;
+      text-align: center;
+      font-size: 24px;
+      margin: 5px;
+      background-color: #e6e6e6;
+    }
+    #message { margin-top: 20px; font-size: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Mancala AI Spiel</h1>
+  <div>
+    <label for="difficulty">Schwierigkeit:</label>
+    <select id="difficulty">
+      <option value="2">Einfach</option>
+      <option value="4">Mittel</option>
+      <option value="6">Schwer</option>
+    </select>
+    <button id="newGame">Neues Spiel</button>
+  </div>
+  <div id="gameBoard"></div>
+  <div id="message"></div>
+  
+  <script>
+    // Spielfeld: Array mit 14 Positionen
+    // Indizes 0-5: Menschliche Pits, 6: Menschen-Store
+    // Indizes 7-12: KI-Pits, 13: KI-Store
+    let board = [];
+    let currentPlayer = 0; // 0 = Mensch, 1 = KI
+    let maxDepth = parseInt(document.getElementById('difficulty').value);
+
+    // Initialisiert das Spiel – 4 Steine pro Mulde, Stores mit 0
+    function initGame() {
+      board = [];
+      for (let i = 0; i < 14; i++) {
+        if (i === 6 || i === 13) board[i] = 0;
+        else board[i] = 4;
+      }
+      currentPlayer = 0; // Mensch beginnt
+      document.getElementById('message').innerText = "Dein Zug!";
+      renderBoard();
+    }
+
+    // Zeichnet das Spielbrett
+    function renderBoard() {
+      let gameBoard = document.getElementById('gameBoard');
+      gameBoard.innerHTML = '';
+      // Obere Reihe: KI-Pits (Indices 12 bis 7) und KI-Store links (Index 13)
+      let topRow = document.createElement('div');
+      topRow.className = 'row';
+      
+      let aiStore = document.createElement('div');
+      aiStore.className = 'store';
+      aiStore.innerText = board[13];
+      topRow.appendChild(aiStore);
+      
+      for (let i = 12; i >= 7; i--) {
+        let pit = document.createElement('div');
+        pit.className = 'pit disabled';
+        pit.innerText = board[i];
+        pit.dataset.index = i;
+        topRow.appendChild(pit);
+      }
+      gameBoard.appendChild(topRow);
+
+      // Untere Reihe: Mensch-Pits (Indices 0 bis 5) und Menschen-Store rechts (Index 6)
+      let bottomRow = document.createElement('div');
+      bottomRow.className = 'row';
+      for (let i = 0; i <= 5; i++) {
+        let pit = document.createElement('div');
+        pit.className = 'pit';
+        pit.innerText = board[i];
+        pit.dataset.index = i;
+        pit.addEventListener('click', function() {
+          if (currentPlayer === 0 && board[parseInt(this.dataset.index)] > 0) {
+            humanMove(parseInt(this.dataset.index));
+          }
+        });
+        bottomRow.appendChild(pit);
+      }
+      let humanStore = document.createElement('div');
+      humanStore.className = 'store';
+      humanStore.innerText = board[6];
+      bottomRow.appendChild(humanStore);
+      gameBoard.appendChild(bottomRow);
+    }
+
+    // Menschlicher Zug
+    function humanMove(pitIndex) {
+      if (currentPlayer !== 0 || board[pitIndex] === 0) return;
+      let result = makeMove(board, pitIndex, currentPlayer);
+      board = result.board;
+      renderBoard();
+      if (isGameOver(board)) { endGame(); return; }
+      if (result.extraTurn) {
+        document.getElementById('message').innerText = "Du bekommst einen Extra-Zug!";
+      } else {
+        currentPlayer = 1;
+        document.getElementById('message').innerText = "KI ist am Zug...";
+        setTimeout(aiMove, 500);
+      }
+    }
+
+    // KI-Zug: Nutzt Minimax zur Bestimmung des besten Zugs
+    function aiMove() {
+      maxDepth = parseInt(document.getElementById('difficulty').value);
+      let validMoves = getValidMoves(board, currentPlayer);
+      if (validMoves.length === 0) { endGame(); return; }
+      let best = minimax(board, maxDepth, currentPlayer, -Infinity, Infinity);
+      if (best.move === null) best.move = validMoves[0];
+      let result = makeMove(board, best.move, currentPlayer);
+      board = result.board;
+      renderBoard();
+      if (isGameOver(board)) { endGame(); return; }
+      if (result.extraTurn) {
+        document.getElementById('message').innerText = "KI bekommt einen Extra-Zug...";
+        setTimeout(aiMove, 500);
+      } else {
+        currentPlayer = 0;
+        document.getElementById('message').innerText = "Dein Zug!";
+      }
+    }
+
+    // Führt einen Zug aus: Nimmt alle Steine aus der gewählten Mulde und sät sie
+    // Rückgabe: { board: neues Board, extraTurn: ob ein Extra-Zug gewährt wird }
+    function makeMove(currentBoard, pit, player) {
+      let newBoard = currentBoard.slice();
+      let stones = newBoard[pit];
+      newBoard[pit] = 0;
+      let index = pit;
+      while (stones > 0) {
+        index = (index + 1) % 14;
+        // Überspringe den gegnerischen Store
+        if (player === 0 && index === 13) continue;
+        if (player === 1 && index === 6) continue;
+        newBoard[index]++;
+        stones--;
+      }
+      let extraTurn = false;
+      // Extra-Zug, wenn der letzte Stein im eigenen Store landet
+      if ((player === 0 && index === 6) || (player === 1 && index === 13)) {
+        extraTurn = true;
+      } else {
+        // Schlagregel: Landet der letzte Stein in einer leeren Mulde auf eigener Seite und der gegenüberliegende
+        // Gegner-Mulde enthält Steine, dann werden beide zusammen in den Store geholt.
+        if (player === 0 && index >= 0 && index < 6 && newBoard[index] === 1 && newBoard[12 - index] > 0) {
+          newBoard[6] += newBoard[12 - index] + 1;
+          newBoard[index] = 0;
+          newBoard[12 - index] = 0;
+        }
+        if (player === 1 && index >= 7 && index < 13 && newBoard[index] === 1 && newBoard[12 - index] > 0) {
+          newBoard[13] += newBoard[12 - index] + 1;
+          newBoard[index] = 0;
+          newBoard[12 - index] = 0;
+        }
+      }
+      // Falls eine Seite leer ist, sammle alle verbleibenden Steine
+      if (isGameOver(newBoard)) {
+        newBoard = collectRemaining(newBoard);
+      }
+      return { board: newBoard, extraTurn: extraTurn };
+    }
+
+    // Prüft, ob alle Mulden einer Seite leer sind
+    function isGameOver(b) {
+      let side1Empty = true;
+      for (let i = 0; i < 6; i++) {
+        if (b[i] > 0) { side1Empty = false; break; }
+      }
+      let side2Empty = true;
+      for (let i = 7; i < 13; i++) {
+        if (b[i] > 0) { side2Empty = false; break; }
+      }
+      return side1Empty || side2Empty;
+    }
+
+    // Sammelt die restlichen Steine, wenn das Spiel zu Ende ist
+    function collectRemaining(b) {
+      let newBoard = b.slice();
+      let sum1 = 0;
+      for (let i = 0; i < 6; i++) { sum1 += newBoard[i]; newBoard[i] = 0; }
+      newBoard[6] += sum1;
+      let sum2 = 0;
+      for (let i = 7; i < 13; i++) { sum2 += newBoard[i]; newBoard[i] = 0; }
+      newBoard[13] += sum2;
+      return newBoard;
+    }
+
+    // Gibt alle gültigen Züge für den aktuellen Spieler zurück
+    function getValidMoves(b, player) {
+      let moves = [];
+      if (player === 0) {
+        for (let i = 0; i < 6; i++) { if (b[i] > 0) moves.push(i); }
+      } else {
+        for (let i = 7; i < 13; i++) { if (b[i] > 0) moves.push(i); }
+      }
+      return moves;
+    }
+
+    // Bewertungsfunktion: Differenz zwischen KI-Store und Menschen-Store
+    // Bei Spielende gibt es einen hohen Bonus
+    function evaluate(b) {
+      if (isGameOver(b)) {
+        if (b[13] > b[6]) return 1000;
+        else if (b[13] < b[6]) return -1000;
+        else return 0;
+      }
+      return b[13] - b[6];
+    }
+
+    // Minimax-Algorithmus mit Alpha-Beta-Pruning
+    // Berücksichtigt Extra-Züge: Erhält der Spieler einen Extra-Zug, wird die Tiefe nicht reduziert.
+    function minimax(b, depth, player, alpha, beta) {
+      if (depth === 0 || isGameOver(b)) {
+        return { score: evaluate(b), move: null };
+      }
+      let validMoves = getValidMoves(b, player);
+      if (validMoves.length === 0) return { score: evaluate(b), move: null };
+      let bestMove = null;
+      if (player === 1) { // Maximierender Spieler (KI)
+        let maxEval = -Infinity;
+        for (let move of validMoves) {
+          let result = makeMove(b, move, player);
+          let nextPlayer = player;
+          let newDepth = depth;
+          if (!result.extraTurn) { nextPlayer = 0; newDepth = depth - 1; }
+          let evalResult = minimax(result.board, newDepth, nextPlayer, alpha, beta);
+          if (evalResult.score > maxEval) {
+            maxEval = evalResult.score;
+            bestMove = move;
+          }
+          alpha = Math.max(alpha, evalResult.score);
+          if (beta <= alpha) break;
+        }
+        return { score: maxEval, move: bestMove };
+      } else { // Minimierender Spieler (Mensch)
+        let minEval = Infinity;
+        for (let move of validMoves) {
+          let result = makeMove(b, move, player);
+          let nextPlayer = player;
+          let newDepth = depth;
+          if (!result.extraTurn) { nextPlayer = 1; newDepth = depth - 1; }
+          let evalResult = minimax(result.board, newDepth, nextPlayer, alpha, beta);
+          if (evalResult.score < minEval) {
+            minEval = evalResult.score;
+            bestMove = move;
+          }
+          beta = Math.min(beta, evalResult.score);
+          if (beta <= alpha) break;
+        }
+        return { score: minEval, move: bestMove };
+      }
+    }
+
+    // Spiel beenden und Ergebnis anzeigen
+    function endGame() {
+      board = collectRemaining(board);
+      renderBoard();
+      let message = "";
+      if (board[6] > board[13]) message = "Du gewinnst!";
+      else if (board[13] > board[6]) message = "Die KI gewinnt!";
+      else message = "Unentschieden!";
+      document.getElementById('message').innerText = "Spiel beendet: " + message;
+    }
+
+    document.getElementById('newGame').addEventListener('click', initGame);
+    window.onload = initGame;
+  </script>
+</body>
+</html>
