@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Gomoku – Spiel gegen AI</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+    }
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+    }
+    td {
+      width: 40px;
+      height: 40px;
+      border: 1px solid #000;
+      font-size: 24px;
+      vertical-align: middle;
+      text-align: center;
+      cursor: pointer;
+    }
+    .player {
+      color: blue;
+    }
+    .ai {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gomoku – Fünf in einer Reihe</h1>
+  <div>
+    Schwierigkeit:
+    <select id="difficulty">
+      <option value="easy">Einfach</option>
+      <option value="medium">Mittel</option>
+      <option value="hard">Schwer</option>
+    </select>
+    <button id="reset">Reset</button>
+  </div>
+  <div id="message"></div>
+  <table id="gameBoard"></table>
+
+  <script>
+    // Spielfeldgröße und globale Variablen
+    const boardSize = 10;
+    let board = [];
+    let currentTurn = 1; // 1 = Spieler (X), 2 = AI (O)
+    let gameOver = false;
+
+    // Initialisiere das Spielfeld (logisch und UI)
+    function initGame() {
+      board = [];
+      gameOver = false;
+      currentTurn = 1;
+      document.getElementById("message").textContent = "";
+      // Erstelle ein 2D-Array (0 = leer, 1 = Spieler, 2 = AI)
+      for (let i = 0; i < boardSize; i++) {
+        board.push(new Array(boardSize).fill(0));
+      }
+      // Erstelle das HTML-Board
+      const table = document.getElementById("gameBoard");
+      table.innerHTML = "";
+      for (let i = 0; i < boardSize; i++) {
+        const row = document.createElement("tr");
+        for (let j = 0; j < boardSize; j++) {
+          const cell = document.createElement("td");
+          cell.id = `cell-${i}-${j}`;
+          cell.addEventListener("click", () => cellClick(i, j));
+          row.appendChild(cell);
+        }
+        table.appendChild(row);
+      }
+    }
+
+    // Aktualisiert das UI für eine Zelle
+    function updateCell(row, col) {
+      const cell = document.getElementById(`cell-${row}-${col}`);
+      if (board[row][col] === 1) {
+        cell.textContent = "X";
+        cell.className = "player";
+      } else if (board[row][col] === 2) {
+        cell.textContent = "O";
+        cell.className = "ai";
+      } else {
+        cell.textContent = "";
+        cell.className = "";
+      }
+    }
+
+    // Meldungsanzeige
+    function updateMessage(msg) {
+      document.getElementById("message").textContent = msg;
+    }
+
+    // Ereignis beim Klicken einer Zelle
+    function cellClick(row, col) {
+      if (gameOver || board[row][col] !== 0 || currentTurn !== 1) return;
+      board[row][col] = 1;
+      updateCell(row, col);
+      if (checkWin(board, 1)) {
+        updateMessage("Du gewinnst!");
+        gameOver = true;
+        return;
+      }
+      if (isDraw()) {
+        updateMessage("Unentschieden!");
+        gameOver = true;
+        return;
+      }
+      currentTurn = 2;
+      // Kurze Verzögerung, bevor die AI zieht
+      setTimeout(aiMove, 200);
+    }
+
+    // Prüft, ob ein Spieler (1 oder 2) gewonnen hat (5 in einer Reihe)
+    function checkWin(b, player) {
+      // Prüfe horizontal, vertikal, diagonal (beide Richtungen)
+      for (let i = 0; i < boardSize; i++) {
+        for (let j = 0; j < boardSize; j++) {
+          if (b[i][j] !== player) continue;
+          // Richtungen: rechts, runter, diagonal runter-rechts, diagonal runter-links
+          const directions = [
+            { dr: 0, dc: 1 },
+            { dr: 1, dc: 0 },
+            { dr: 1, dc: 1 },
+            { dr: 1, dc: -1 }
+          ];
+          for (let d of directions) {
+            let count = 0;
+            let r = i, c = j;
+            while (r >= 0 && r < boardSize && c >= 0 && c < boardSize && b[r][c] === player) {
+              count++;
+              r += d.dr;
+              c += d.dc;
+            }
+            if (count >= 5) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // Prüft auf Unentschieden (keine leeren Felder)
+    function isDraw() {
+      for (let i = 0; i < boardSize; i++) {
+        for (let j = 0; j < boardSize; j++) {
+          if (board[i][j] === 0) return false;
+        }
+      }
+      return true;
+    }
+
+    // Gibt eine Liste von Kandidatenzügen zurück (nur leere Zellen, die in der Nähe belegter liegen)
+    function getCandidateMoves(b) {
+      const moves = [];
+      for (let i = 0; i < boardSize; i++) {
+        for (let j = 0; j < boardSize; j++) {
+          if (b[i][j] !== 0) continue;
+          // Prüfe Nachbarschaft (in einem Umkreis von 1 Zelle)
+          let adjacent = false;
+          for (let di = -1; di <= 1; di++) {
+            for (let dj = -1; dj <= 1; dj++) {
+              const ni = i + di, nj = j + dj;
+              if (ni >= 0 && ni < boardSize && nj >= 0 && nj < boardSize && b[ni][nj] !== 0) {
+                adjacent = true;
+              }
+            }
+          }
+          if (adjacent) moves.push({ row: i, col: j });
+        }
+      }
+      // Falls noch gar keine Steine liegen (Spielstart) – alle Zellen sind Kandidaten
+      if (moves.length === 0) {
+        for (let i = 0; i < boardSize; i++) {
+          for (let j = 0; j < boardSize; j++) {
+            if (b[i][j] === 0) moves.push({ row: i, col: j });
+          }
+        }
+      }
+      return moves;
+    }
+
+    // Heuristische Bewertung einer Linie (abhängig von Länge und offenen Enden)
+    function evaluateLine(count, openEnds) {
+      if (count >= 5) return 100000;
+      if (count === 4) {
+        if (openEnds === 2) return 10000;
+        else if (openEnds === 1) return 1000;
+      }
+      if (count === 3) {
+        if (openEnds === 2) return 1000;
+        else if (openEnds === 1) return 100;
+      }
+      if (count === 2) {
+        if (openEnds === 2) return 100;
+        else if (openEnds === 1) return 10;
+      }
+      if (count === 1 && openEnds === 2) return 10;
+      return 0;
+    }
+
+    // Bewertungsfunktion für das Board – aus Sicht der AI (Spieler 2)
+    function evaluateBoard(b) {
+      if (checkWin(b, 2)) return 100000;
+      if (checkWin(b, 1)) return -100000;
+      let score = 0;
+      const directions = [
+        { dr: 0, dc: 1 },
+        { dr: 1, dc: 0 },
+        { dr: 1, dc: 1 },
+        { dr: -1, dc: 1 }
+      ];
+      for (let i = 0; i < boardSize; i++) {
+        for (let j = 0; j < boardSize; j++) {
+          if (b[i][j] === 0) continue;
+          const player = b[i][j];
+          for (let d of directions) {
+            // Nur als Start einer Linie zählen
+            const prevR = i - d.dr, prevC = j - d.dc;
+            if (prevR >= 0 && prevR < boardSize && prevC >= 0 && prevC < boardSize && b[prevR][prevC] === player) {
+              continue;
+            }
+            let count = 0;
+            let r = i, c = j;
+            while (r >= 0 && r < boardSize && c >= 0 && c < boardSize && b[r][c] === player) {
+              count++;
+              r += d.dr;
+              c += d.dc;
+            }
+            // Offene Enden prüfen
+            let openEnds = 0;
+            const startR = i - d.dr, startC = j - d.dc;
+            if (startR >= 0 && startR < boardSize && startC >= 0 && startC < boardSize && b[startR][startC] === 0)
+              openEnds++;
+            if (r >= 0 && r < boardSize && c >= 0 && c < boardSize && b[r][c] === 0)
+              openEnds++;
+            const lineScore = evaluateLine(count, openEnds);
+            score += (player === 2) ? lineScore : -lineScore;
+          }
+        }
+      }
+      return score;
+    }
+
+    // Minimax mit Alpha-Beta-Schnitt
+    function minimax(b, depth, maximizingPlayer, alpha, beta) {
+      if (depth === 0 || checkWin(b, 1) || checkWin(b, 2)) {
+        return { score: evaluateBoard(b) };
+      }
+      const moves = getCandidateMoves(b);
+      if (moves.length === 0) return { score: evaluateBoard(b) };
+
+      let bestMove = null;
+      if (maximizingPlayer) {
+        let maxEval = -Infinity;
+        for (let move of moves) {
+          b[move.row][move.col] = 2;
+          const evalResult = minimax(b, depth - 1, false, alpha, beta).score;
+          b[move.row][move.col] = 0;
+          if (evalResult > maxEval) {
+            maxEval = evalResult;
+            bestMove = move;
+          }
+          alpha = Math.max(alpha, evalResult);
+          if (beta <= alpha) break;
+        }
+        return { score: maxEval, move: bestMove };
+      } else {
+        let minEval = Infinity;
+        for (let move of moves) {
+          b[move.row][move.col] = 1;
+          const evalResult = minimax(b, depth - 1, true, alpha, beta).score;
+          b[move.row][move.col] = 0;
+          if (evalResult < minEval) {
+            minEval = evalResult;
+            bestMove = move;
+          }
+          beta = Math.min(beta, evalResult);
+          if (beta <= alpha) break;
+        }
+        return { score: minEval, move: bestMove };
+      }
+    }
+
+    // Lässt die AI einen Zug machen – basierend auf dem gewählten Schwierigkeitsgrad
+    function aiMove() {
+      if (gameOver) return;
+      const diff = document.getElementById("difficulty").value;
+      let move;
+      if (diff === "easy") {
+        // Zufälliger Zug aus den Kandidaten
+        const moves = getCandidateMoves(board);
+        move = moves[Math.floor(Math.random() * moves.length)];
+      } else if (diff === "medium") {
+        // Minimale Tiefe (z. B. 2 Züge voraus)
+        const result = minimax(board, 2, true, -Infinity, Infinity);
+        move = result.move;
+        if (!move) {
+          const moves = getCandidateMoves(board);
+          move = moves[Math.floor(Math.random() * moves.length)];
+        }
+      } else if (diff === "hard") {
+        // Tiefere Suche (minimax mit Alpha-Beta, z. B. Tiefe 4)
+        const result = minimax(board, 4, true, -Infinity, Infinity);
+        move = result.move;
+        if (!move) {
+          const moves = getCandidateMoves(board);
+          move = moves[Math.floor(Math.random() * moves.length)];
+        }
+      }
+      if (move) {
+        board[move.row][move.col] = 2;
+        updateCell(move.row, move.col);
+        if (checkWin(board, 2)) {
+          updateMessage("AI gewinnt!");
+          gameOver = true;
+          return;
+        }
+        if (isDraw()) {
+          updateMessage("Unentschieden!");
+          gameOver = true;
+          return;
+        }
+        currentTurn = 1;
+      }
+    }
+
+    // Eventlistener für den Reset-Knopf
+    document.getElementById("reset").addEventListener("click", initGame);
+
+    // Starte das Spiel
+    initGame();
+  </script>
+</body>
+</html>
