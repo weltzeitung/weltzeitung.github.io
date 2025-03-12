@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Isolation Spiel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    table {
+      border-collapse: collapse;
+      margin: auto;
+    }
+    td {
+      width: 50px;
+      height: 50px;
+      border: 1px solid #000;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .blocked {
+      background-color: #555;
+    }
+    .human {
+      background-color: lightblue;
+    }
+    .ai {
+      background-color: lightcoral;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Isolation Spiel</h1>
+  <p>
+    Wähle den KI-Schwierigkeitsgrad:
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium">Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+  </p>
+  <div id="gameBoard"></div>
+  <p id="status"></p>
+  <button onclick="startGame()">Reset</button>
+  <script>
+    // Brettgröße (7x7)
+    const BOARD_SIZE = 7;
+
+    // Spielzustand
+    let state = {
+      board: [],
+      human: { x: 0, y: 0 },
+      ai: { x: BOARD_SIZE - 1, y: BOARD_SIZE - 1 }
+    };
+    let currentPlayer = "human"; // Mensch beginnt
+
+    // Initialisiere das Brett (0 = leer, 1 = blockiert)
+    function initBoard() {
+      state.board = [];
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        let row = [];
+        for (let j = 0; j < BOARD_SIZE; j++) {
+          row.push(0);
+        }
+        state.board.push(row);
+      }
+    }
+
+    // Zeichne das Brett als Tabelle
+    function drawBoard() {
+      const boardDiv = document.getElementById("gameBoard");
+      boardDiv.innerHTML = "";
+      const table = document.createElement("table");
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        const tr = document.createElement("tr");
+        for (let j = 0; j < BOARD_SIZE; j++) {
+          const td = document.createElement("td");
+          td.id = "cell-" + i + "-" + j;
+          // Blockierte Zellen
+          if (state.board[i][j] === 1) {
+            td.className = "blocked";
+          }
+          // Spielerpositionen einzeichnen
+          if (state.human.x === i && state.human.y === j) {
+            td.className = "human";
+            td.textContent = "H";
+          } else if (state.ai.x === i && state.ai.y === j) {
+            td.className = "ai";
+            td.textContent = "A";
+          }
+          td.addEventListener("click", () => cellClicked(i, j));
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+      boardDiv.appendChild(table);
+    }
+
+    // Prüft, ob ein Zug von (sx,sy) nach (tx,ty) gültig ist.
+    // Dabei muss der Zug in einer geraden Linie (horizontal, vertikal oder diagonal) erfolgen,
+    // und der Pfad darf weder blockierte Zellen noch einen Spieler enthalten.
+    function isValidMove(sx, sy, tx, ty) {
+      // Ziel außerhalb des Brettes?
+      if (tx < 0 || tx >= BOARD_SIZE || ty < 0 || ty >= BOARD_SIZE) return false;
+      // Ziel ist blockiert oder bereits besetzt?
+      if (state.board[tx][ty] === 1) return false;
+      if ((state.human.x === tx && state.human.y === ty) ||
+          (state.ai.x === tx && state.ai.y === ty)) return false;
+      // Prüfe, ob Zug in einer geraden Linie erfolgt
+      const deltaX = tx - sx;
+      const deltaY = ty - sy;
+      if (!(deltaX === 0 || deltaY === 0 || Math.abs(deltaX) === Math.abs(deltaY))) return false;
+      const stepX = deltaX === 0 ? 0 : deltaX / Math.abs(deltaX);
+      const stepY = deltaY === 0 ? 0 : deltaY / Math.abs(deltaY);
+      let cx = sx + stepX;
+      let cy = sy + stepY;
+      // Prüfe alle Felder auf dem Weg
+      while (cx !== tx || cy !== ty) {
+        if (state.board[cx][cy] === 1) return false;
+        if ((state.human.x === cx && state.human.y === cy) ||
+            (state.ai.x === cx && state.ai.y === cy)) return false;
+        cx += stepX;
+        cy += stepY;
+      }
+      return true;
+    }
+
+    // Wird aufgerufen, wenn der Mensch auf eine Zelle klickt
+    function cellClicked(i, j) {
+      if (currentPlayer !== "human") return;
+      if (isValidMove(state.human.x, state.human.y, i, j)) {
+        makeMove("human", { x: i, y: j });
+        drawBoard();
+        checkGameOver();
+        if (currentPlayer === "ai") {
+          setTimeout(aiTurn, 500);
+        }
+      }
+    }
+
+    // Führt einen Zug aus: Die alte Position wird blockiert und die neue Position gesetzt.
+    function makeMove(player, move) {
+      if (player === "human") {
+        state.board[state.human.x][state.human.y] = 1;
+        state.human = { x: move.x, y: move.y };
+        currentPlayer = "ai";
+      } else {
+        state.board[state.ai.x][state.ai.y] = 1;
+        state.ai = { x: move.x, y: move.y };
+        currentPlayer = "human";
+      }
+    }
+
+    // Ermittelt alle gültigen Züge für den angegebenen Spieler im übergebenen Zustand.
+    function getValidMovesForPlayer(player, st) {
+      const moves = [];
+      const pos = (player === "human") ? st.human : st.ai;
+      const directions = [
+        { dx: -1, dy: 0 },
+        { dx: 1, dy: 0 },
+        { dx: 0, dy: -1 },
+        { dx: 0, dy: 1 },
+        { dx: -1, dy: -1 },
+        { dx: -1, dy: 1 },
+        { dx: 1, dy: -1 },
+        { dx: 1, dy: 1 }
+      ];
+      for (const d of directions) {
+        let nx = pos.x + d.dx;
+        let ny = pos.y + d.dy;
+        while (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE &&
+               st.board[nx][ny] !== 1 &&
+               !((st.human.x === nx && st.human.y === ny) || (st.ai.x === nx && st.ai.y === ny))) {
+          moves.push({ x: nx, y: ny });
+          nx += d.dx;
+          ny += d.dy;
+        }
+      }
+      return moves;
+    }
+
+    // Prüft, ob das Spiel beendet ist (aktueller Spieler kann nicht ziehen)
+    function checkGameOver() {
+      const humanMoves = getValidMovesForPlayer("human", state);
+      const aiMoves = getValidMovesForPlayer("ai", state);
+      if (currentPlayer === "human" && humanMoves.length === 0) {
+        document.getElementById("status").textContent = "KI gewinnt!";
+        currentPlayer = "none";
+      } else if (currentPlayer === "ai" && aiMoves.length === 0) {
+        document.getElementById("status").textContent = "Du gewinnst!";
+        currentPlayer = "none";
+      } else {
+        document.getElementById("status").textContent = (currentPlayer === "human") ? "Dein Zug" : "KI zieht…";
+      }
+    }
+
+    // Lässt die KI ihren Zug ausführen – je nach gewählter Schwierigkeit.
+    function aiTurn() {
+      if (currentPlayer !== "ai") return;
+      const moves = getValidMovesForPlayer("ai", state);
+      if (moves.length === 0) {
+        document.getElementById("status").textContent = "Du gewinnst!";
+        currentPlayer = "none";
+        return;
+      }
+      const difficulty = document.getElementById("difficulty").value;
+      let move;
+      if (difficulty === "easy") {
+        move = moves[Math.floor(Math.random() * moves.length)];
+      } else if (difficulty === "medium") {
+        move = minimaxDecision(state, 3);
+      } else { // hard
+        move = minimaxDecision(state, 5);
+      }
+      if (move) {
+        makeMove("ai", move);
+        drawBoard();
+        checkGameOver();
+      }
+    }
+
+    // Erzeugt eine tiefe Kopie des Zustands
+    function cloneState(st) {
+      return {
+        board: st.board.map(row => row.slice()),
+        human: { x: st.human.x, y: st.human.y },
+        ai: { x: st.ai.x, y: st.ai.y }
+      };
+    }
+
+    // Bewertungsfunktion: Differenz der Anzahl verfügbarer Züge (KI – Mensch)
+    function evaluate(st) {
+      const aiMoves = getValidMovesForPlayer("ai", st).length;
+      const humanMoves = getValidMovesForPlayer("human", st).length;
+      return aiMoves - humanMoves;
+    }
+
+    // Minimax-Algorithmus mit Alpha-Beta-Schnitt
+    function minimax(st, depth, maximizingPlayer, alpha, beta) {
+      if (depth === 0) {
+        return evaluate(st);
+      }
+      if (maximizingPlayer) {
+        const moves = getValidMovesForPlayer("ai", st);
+        if (moves.length === 0) return -10000;
+        let maxEval = -Infinity;
+        for (const move of moves) {
+          const newState = cloneState(st);
+          newState.board[newState.ai.x][newState.ai.y] = 1;
+          newState.ai = { x: move.x, y: move.y };
+          const evalScore = minimax(newState, depth - 1, false, alpha, beta);
+          maxEval = Math.max(maxEval, evalScore);
+          alpha = Math.max(alpha, evalScore);
+          if (beta <= alpha) break;
+        }
+        return maxEval;
+      } else {
+        const moves = getValidMovesForPlayer("human", st);
+        if (moves.length === 0) return 10000;
+        let minEval = Infinity;
+        for (const move of moves) {
+          const newState = cloneState(st);
+          newState.board[newState.human.x][newState.human.y] = 1;
+          newState.human = { x: move.x, y: move.y };
+          const evalScore = minimax(newState, depth - 1, true, alpha, beta);
+          minEval = Math.min(minEval, evalScore);
+          beta = Math.min(beta, evalScore);
+          if (beta <= alpha) break;
+        }
+        return minEval;
+      }
+    }
+
+    // Wählt den besten Zug für die KI mittels minimax-Entscheidung.
+    function minimaxDecision(st, depth) {
+      const moves = getValidMovesForPlayer("ai", st);
+      let bestMove = null;
+      let bestValue = -Infinity;
+      for (const move of moves) {
+        const newState = cloneState(st);
+        newState.board[newState.ai.x][newState.ai.y] = 1;
+        newState.ai = { x: move.x, y: move.y };
+        const moveValue = minimax(newState, depth - 1, false, -Infinity, Infinity);
+        if (moveValue > bestValue) {
+          bestValue = moveValue;
+          bestMove = move;
+        }
+      }
+      return bestMove;
+    }
+
+    // Startet ein neues Spiel
+    function startGame() {
+      initBoard();
+      // Festgelegte Startpositionen: Mensch oben links, KI unten rechts
+      state.human = { x: 0, y: 0 };
+      state.ai = { x: BOARD_SIZE - 1, y: BOARD_SIZE - 1 };
+      currentPlayer = "human";
+      document.getElementById("status").textContent = "Dein Zug";
+      drawBoard();
+    }
+
+    startGame();
+  </script>
+</body>
+</html>
