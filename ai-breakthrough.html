@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Breakthrough – Spiel gegen die KI</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    #board {
+      border-collapse: collapse;
+      margin: 20px auto;
+    }
+    #board td {
+      width: 50px;
+      height: 50px;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 32px;
+      cursor: pointer;
+    }
+    /* Farbgebung im Schachbrettmuster */
+    #board td:nth-child(even) {
+      background-color: #b58863;
+    }
+    #board td:nth-child(odd) {
+      background-color: #f0d9b5;
+    }
+    .selected {
+      border: 3px solid yellow !important;
+    }
+    #controls {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Breakthrough – Spiel gegen die KI</h1>
+  <div id="controls">
+    <label for="difficulty">KI Schwierigkeitsgrad:</label>
+    <select id="difficulty">
+      <option value="leicht">Leicht</option>
+      <option value="mittel">Mittel</option>
+      <option value="schwer">Schwer</option>
+    </select>
+    <button id="resetBtn">Reset</button>
+  </div>
+  <div id="message"></div>
+  <table id="board"></table>
+
+  <script>
+    // Globale Variablen und Parameter
+    const rows = 8, cols = 8;
+    const humanPlayer = 1, aiPlayer = 2;
+    let board = [];
+    let currentPlayer = humanPlayer;
+    let gameOver = false;
+    let selected = null; // Ausgewählte menschliche Figur {row, col}
+
+    // Initialisierung des Spielbretts: AI belegt die oberen beiden Reihen, du die unteren beiden.
+    function initBoard() {
+      board = [];
+      for (let r = 0; r < rows; r++) {
+        board[r] = [];
+        for (let c = 0; c < cols; c++) {
+          board[r][c] = 0;
+        }
+      }
+      // AI – obere zwei Reihen (r = 0,1)
+      for (let r = 0; r < 2; r++) {
+        for (let c = 0; c < cols; c++) {
+          board[r][c] = aiPlayer;
+        }
+      }
+      // Mensch – untere zwei Reihen (r = 6,7)
+      for (let r = 6; r < 8; r++) {
+        for (let c = 0; c < cols; c++) {
+          board[r][c] = humanPlayer;
+        }
+      }
+      currentPlayer = humanPlayer;
+      gameOver = false;
+      selected = null;
+      drawBoard();
+      setMessage("Dein Zug");
+    }
+
+    // Zeichnet das Brett in einem HTML-Table
+    function drawBoard() {
+      const boardTable = document.getElementById("board");
+      boardTable.innerHTML = "";
+      for (let r = 0; r < rows; r++) {
+        const tr = document.createElement("tr");
+        for (let c = 0; c < cols; c++) {
+          const td = document.createElement("td");
+          td.id = "cell-" + r + "-" + c;
+          td.addEventListener("click", (function(row, col) {
+            return function() { cellClicked(row, col); };
+          })(r, c));
+          if (selected && selected.row === r && selected.col === c) {
+            td.classList.add("selected");
+          }
+          if (board[r][c] === humanPlayer) {
+            td.textContent = "🔴";
+          } else if (board[r][c] === aiPlayer) {
+            td.textContent = "🔵";
+          } else {
+            td.textContent = "";
+          }
+          tr.appendChild(td);
+        }
+        boardTable.appendChild(tr);
+      }
+    }
+
+    function setMessage(msg) {
+      document.getElementById("message").textContent = msg;
+    }
+
+    // Wird aufgerufen, wenn eine Zelle angeklickt wird
+    function cellClicked(r, c) {
+      if (gameOver || currentPlayer !== humanPlayer) return;
+      if (selected) {
+        const moves = getLegalMovesForPiece(board, humanPlayer, selected.row, selected.col);
+        let valid = false;
+        let chosenMove = null;
+        for (let m of moves) {
+          if (m.to.row === r && m.to.col === c) {
+            valid = true;
+            chosenMove = m;
+            break;
+          }
+        }
+        if (valid) {
+          makeMove(chosenMove);
+          selected = null;
+          drawBoard();
+          checkGameOver();
+          if (!gameOver) {
+            currentPlayer = aiPlayer;
+            setMessage("KI zieht...");
+            setTimeout(aiTurn, 500);
+          }
+        } else {
+          if (board[r][c] === humanPlayer) {
+            selected = { row: r, col: c };
+            drawBoard();
+          } else {
+            selected = null;
+            drawBoard();
+          }
+        }
+      } else {
+        if (board[r][c] === humanPlayer) {
+          selected = { row: r, col: c };
+          drawBoard();
+        }
+      }
+    }
+
+    // Gibt alle legalen Züge für eine bestimmte Figur zurück.
+    // Bei Breakthrough: 
+    // - Vorwärtsziehen: nur wenn das Feld frei ist.
+    // - Diagonale Züge: nur erlaubt, wenn im Zielfeld ein gegnerischer Stein steht.
+    function getLegalMovesForPiece(boardState, player, r, c) {
+      let moves = [];
+      const dir = (player === humanPlayer) ? -1 : 1;
+      const nr = r + dir;
+      if (nr >= 0 && nr < rows) {
+        // Vorwärtsbewegung: nur wenn das Feld frei ist.
+        if (boardState[nr][c] === 0) {
+          moves.push({ from: { row: r, col: c }, to: { row: nr, col: c } });
+        }
+        // Diagonal links: nur, wenn ein gegnerischer Stein steht.
+        if (c - 1 >= 0) {
+          if (boardState[nr][c - 1] === (player === humanPlayer ? aiPlayer : humanPlayer)) {
+            moves.push({ from: { row: r, col: c }, to: { row: nr, col: c - 1 } });
+          }
+        }
+        // Diagonal rechts: nur, wenn ein gegnerischer Stein steht.
+        if (c + 1 < cols) {
+          if (boardState[nr][c + 1] === (player === humanPlayer ? aiPlayer : humanPlayer)) {
+            moves.push({ from: { row: r, col: c }, to: { row: nr, col: c + 1 } });
+          }
+        }
+      }
+      return moves;
+    }
+
+    // Gibt alle legalen Züge eines Spielers zurück
+    function getAllLegalMoves(boardState, player) {
+      let moves = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (boardState[r][c] === player) {
+            moves = moves.concat(getLegalMovesForPiece(boardState, player, r, c));
+          }
+        }
+      }
+      return moves;
+    }
+
+    // Führt einen Zug aus (inklusive Schlag, falls nötig)
+    function makeMove(move) {
+      const fr = move.from, to = move.to;
+      // Entferne gegnerischen Stein, falls vorhanden
+      if (board[to.row][to.col] !== 0 && board[to.row][to.col] !== board[fr.row][fr.col]) {
+        board[to.row][to.col] = 0;
+      }
+      board[to.row][to.col] = board[fr.row][fr.col];
+      board[fr.row][fr.col] = 0;
+    }
+
+    // Klonen eines Brettzustands (für die Minimax-Suche)
+    function cloneBoard(boardState) {
+      return boardState.map(row => row.slice());
+    }
+
+    // Prüft, ob das Spiel zu Ende ist:
+    // – Mensch erreicht die oberste Reihe oder KI die unterste Reihe
+    // – Oder hat ein Spieler keine legalen Züge mehr
+    function checkGameOver() {
+      for (let c = 0; c < cols; c++) {
+        if (board[0][c] === humanPlayer) {
+          setMessage("Du hast gewonnen!");
+          gameOver = true;
+          return;
+        }
+        if (board[rows - 1][c] === aiPlayer) {
+          setMessage("KI hat gewonnen!");
+          gameOver = true;
+          return;
+        }
+      }
+      if (getAllLegalMoves(board, humanPlayer).length === 0) {
+        setMessage("Keine Züge mehr – KI gewinnt!");
+        gameOver = true;
+        return;
+      }
+      if (getAllLegalMoves(board, aiPlayer).length === 0) {
+        setMessage("Keine Züge mehr – du gewinnst!");
+        gameOver = true;
+        return;
+      }
+    }
+
+    // Bewertungsfunktion: 
+    // - Positionswertung: Je weiter die Steine vorgerückt sind, desto besser.
+    // - Materialvorteil: Differenz der Anzahl an Steinen (starker Einfluss).
+    function evaluateBoard(boardState) {
+      let score = 0;
+      let aiMaterial = 0, humanMaterial = 0;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (boardState[r][c] === humanPlayer) {
+            score += (rows - r);
+            humanMaterial++;
+          } else if (boardState[r][c] === aiPlayer) {
+            score -= (r + 1);
+            aiMaterial++;
+          }
+        }
+      }
+      score += (humanMaterial - aiMaterial) * 100;
+      return score;
+    }
+
+    // Terminal-Test: Spiel gewonnen oder keiner hat noch Züge
+    function isTerminal(boardState) {
+      for (let c = 0; c < cols; c++) {
+        if (boardState[0][c] === humanPlayer) return true;
+        if (boardState[rows - 1][c] === aiPlayer) return true;
+      }
+      if (getAllLegalMoves(boardState, humanPlayer).length === 0 ||
+          getAllLegalMoves(boardState, aiPlayer).length === 0) return true;
+      return false;
+    }
+
+    // Minimax-Algorithmus mit Alpha-Beta-Suche.
+    // maximizingPlayer === true → KI (aiPlayer), false → Mensch.
+    function minimax(boardState, depth, maximizingPlayer, alpha, beta) {
+      if (depth === 0 || isTerminal(boardState)) {
+        return evaluateBoard(boardState);
+      }
+      if (maximizingPlayer) {
+        let maxEval = -Infinity;
+        const moves = getAllLegalMoves(boardState, aiPlayer);
+        for (let m of moves) {
+          const newBoard = cloneBoard(boardState);
+          if (newBoard[m.to.row][m.to.col] !== 0 && newBoard[m.to.row][m.to.col] !== newBoard[m.from.row][m.from.col]) {
+            newBoard[m.to.row][m.to.col] = 0;
+          }
+          newBoard[m.to.row][m.to.col] = newBoard[m.from.row][m.from.col];
+          newBoard[m.from.row][m.from.col] = 0;
+          const eval = minimax(newBoard, depth - 1, false, alpha, beta);
+          maxEval = Math.max(maxEval, eval);
+          alpha = Math.max(alpha, eval);
+          if (beta <= alpha) break;
+        }
+        return maxEval;
+      } else {
+        let minEval = Infinity;
+        const moves = getAllLegalMoves(boardState, humanPlayer);
+        for (let m of moves) {
+          const newBoard = cloneBoard(boardState);
+          if (newBoard[m.to.row][m.to.col] !== 0 && newBoard[m.to.row][m.to.col] !== newBoard[m.from.row][m.from.col]) {
+            newBoard[m.to.row][m.to.col] = 0;
+          }
+          newBoard[m.to.row][m.to.col] = newBoard[m.from.row][m.from.col];
+          newBoard[m.from.row][m.from.col] = 0;
+          const eval = minimax(newBoard, depth - 1, true, alpha, beta);
+          minEval = Math.min(minEval, eval);
+          beta = Math.min(beta, eval);
+          if (beta <= alpha) break;
+        }
+        return minEval;
+      }
+    }
+
+    // Sucht den besten Zug für den übergebenen Spieler
+    function findBestMove(boardState, depth, player) {
+      let bestMove = null;
+      let bestEval = (player === aiPlayer) ? -Infinity : Infinity;
+      const moves = getAllLegalMoves(boardState, player);
+      for (let m of moves) {
+        const newBoard = cloneBoard(boardState);
+        if (newBoard[m.to.row][m.to.col] !== 0 && newBoard[m.to.row][m.to.col] !== newBoard[m.from.row][m.from.col]) {
+          newBoard[m.to.row][m.to.col] = 0;
+        }
+        newBoard[m.to.row][m.to.col] = newBoard[m.from.row][m.from.col];
+        newBoard[m.from.row][m.from.col] = 0;
+        const eval = (player === aiPlayer)
+                     ? minimax(newBoard, depth - 1, false, -Infinity, Infinity)
+                     : minimax(newBoard, depth - 1, true, -Infinity, Infinity);
+        if (player === aiPlayer) {
+          if (eval > bestEval) {
+            bestEval = eval;
+            bestMove = m;
+          }
+        } else {
+          if (eval < bestEval) {
+            bestEval = eval;
+            bestMove = m;
+          }
+        }
+      }
+      return bestMove;
+    }
+
+    // KI-Zug: "leicht" = zufällig, "mittel" und "schwer" nutzen Minimax (Tiefe 3 bzw. 8)
+    function aiTurn() {
+      if (gameOver) return;
+      const difficulty = document.getElementById("difficulty").value;
+      let move;
+      if (difficulty === "leicht") {
+        const moves = getAllLegalMoves(board, aiPlayer);
+        move = moves[Math.floor(Math.random() * moves.length)];
+      } else {
+        const depth = (difficulty === "mittel") ? 3 : 8;
+        move = findBestMove(board, depth, aiPlayer);
+        if (!move) {
+          const moves = getAllLegalMoves(board, aiPlayer);
+          move = moves[Math.floor(Math.random() * moves.length)];
+        }
+      }
+      makeMove(move);
+      drawBoard();
+      checkGameOver();
+      if (!gameOver) {
+        currentPlayer = humanPlayer;
+        setMessage("Dein Zug");
+      }
+    }
+
+    // Reset-Knopf
+    document.getElementById("resetBtn").addEventListener("click", initBoard);
+
+    // Starte das Spiel
+    initBoard();
+  </script>
+</body>
+</html>
