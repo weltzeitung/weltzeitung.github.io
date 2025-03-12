@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Nim – Spiel gegen KI</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; }
+    .heap {
+      display: inline-block;
+      margin: 20px;
+      padding: 10px;
+      border: 2px solid #333;
+      border-radius: 10px;
+      min-width: 100px;
+      cursor: pointer;
+    }
+    .heap:hover {
+      background-color: #f0f0f0;
+    }
+    .stones {
+      margin-top: 10px;
+    }
+    .stone {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      background-color: #424242;
+      border-radius: 50%;
+      margin: 2px;
+    }
+    #message { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Nim – Spiel gegen KI</h1>
+  <div>
+    <label for="difficulty">KI Schwierigkeitsgrad:</label>
+    <select id="difficulty">
+      <option value="easy">Einfach</option>
+      <option value="medium">Mittel</option>
+      <option value="hard">Schwer</option>
+    </select>
+  </div>
+  <div id="game"></div>
+  <div id="message"></div>
+
+  <script>
+    // Globale Variablen
+    let heaps = [3, 5, 7]; // Startkonfiguration der Heaps
+    const HUMAN_PLAYER = "human";
+    const AI_PLAYER = "ai";
+    let currentPlayer = HUMAN_PLAYER; // Der Mensch beginnt
+
+    // Rendert den aktuellen Spielzustand
+    function renderGame() {
+      const gameDiv = document.getElementById("game");
+      gameDiv.innerHTML = "";
+      heaps.forEach((heap, index) => {
+        const heapDiv = document.createElement("div");
+        heapDiv.className = "heap";
+        heapDiv.innerHTML = `<h3>Heap ${index + 1} (${heap})</h3>`;
+        const stonesDiv = document.createElement("div");
+        stonesDiv.className = "stones";
+        for (let i = 0; i < heap; i++) {
+          const stoneDiv = document.createElement("div");
+          stoneDiv.className = "stone";
+          stonesDiv.appendChild(stoneDiv);
+        }
+        heapDiv.appendChild(stonesDiv);
+        // Beim menschlichen Zug kann auf einen Heap geklickt werden, sofern er Steine enthält.
+        if (currentPlayer === HUMAN_PLAYER && heap > 0) {
+          heapDiv.addEventListener("click", () => playerMove(index));
+        }
+        gameDiv.appendChild(heapDiv);
+      });
+      updateMessage();
+    }
+
+    // Aktualisiert die Statusanzeige
+    function updateMessage() {
+      let msg = "";
+      if (isTerminal(heaps)) {
+        // Wenn keine Steine mehr vorhanden sind: Der Spieler, der den letzten Stein entfernt hat, hat gewonnen.
+        msg = (currentPlayer === HUMAN_PLAYER)
+          ? "Spiel vorbei! Die KI hat gewonnen."
+          : "Spiel vorbei! Du hast gewonnen.";
+      } else {
+        msg = (currentPlayer === HUMAN_PLAYER)
+          ? "Dein Zug: Klicke auf einen Heap, um Steine zu entfernen."
+          : "KI ist am Zug...";
+      }
+      document.getElementById("message").innerText = msg;
+    }
+
+    // Spielerzug: Auswahl des Heaps und Eingabe, wie viele Steine entfernt werden sollen
+    function playerMove(heapIndex) {
+      const available = heaps[heapIndex];
+      const input = prompt(`Wie viele Steine möchtest du aus Heap ${heapIndex + 1} entfernen? (1-${available})`);
+      if (input === null) return; // Abbruch
+      const removeCount = parseInt(input);
+      if (isNaN(removeCount) || removeCount < 1 || removeCount > available) {
+        alert("Ungültige Anzahl!");
+        return;
+      }
+      heaps[heapIndex] -= removeCount;
+      if (isTerminal(heaps)) {
+        currentPlayer = HUMAN_PLAYER; // Spieler bleibt, da Spiel vorbei
+        renderGame();
+        return;
+      }
+      currentPlayer = AI_PLAYER;
+      renderGame();
+      setTimeout(aiTurn, 500);
+    }
+
+    // Terminal, falls alle Heaps leer sind
+    function isTerminal(state) {
+      return state.every(heap => heap === 0);
+    }
+
+    // Klont den Spielzustand (Array)
+    function cloneState(state) {
+      return state.slice();
+    }
+
+    // Liefert alle gültigen Züge im aktuellen Zustand.
+    // Ein Zug besteht aus: { heap: Index, remove: Anzahl der zu entfernenden Steine }
+    function getValidMoves(state) {
+      let moves = [];
+      state.forEach((heap, index) => {
+        for (let r = 1; r <= heap; r++) {
+          moves.push({ heap: index, remove: r });
+        }
+      });
+      return moves;
+    }
+
+    // Wendet einen Zug auf einen Zustand an und gibt den neuen Zustand zurück.
+    function applyMove(state, move) {
+      const newState = cloneState(state);
+      newState[move.heap] -= move.remove;
+      return newState;
+    }
+
+    // Heuristische Bewertung: Verwendet den Nim‑Summe-Ansatz.
+    // Ist die Nim‑Summe ≠ 0, gilt der Zustand als vorteilhaft für den Spieler, der am Zug ist.
+    function nimSum(state) {
+      return state.reduce((acc, heap) => acc ^ heap, 0);
+    }
+
+    function heuristicEvaluation(state, maximizing) {
+      const sum = nimSum(state);
+      if (maximizing) {
+        return sum !== 0 ? 1 : -1;
+      } else {
+        return sum !== 0 ? -1 : 1;
+      }
+    }
+
+    // Minimax mit Alpha-Beta-Pruning
+    function minimax(state, depth, maximizing, alpha, beta) {
+      if (isTerminal(state)) {
+        // Wenn terminal: Der Spieler, der am Zug ist, verliert.
+        return maximizing ? -1000 : 1000;
+      }
+      if (depth === 0) {
+        return heuristicEvaluation(state, maximizing);
+      }
+      const moves = getValidMoves(state);
+      if (maximizing) {
+        let maxEval = -Infinity;
+        for (let move of moves) {
+          const newState = applyMove(state, move);
+          const evalScore = minimax(newState, depth - 1, false, alpha, beta);
+          maxEval = Math.max(maxEval, evalScore);
+          alpha = Math.max(alpha, evalScore);
+          if (beta <= alpha) break;
+        }
+        return maxEval;
+      } else {
+        let minEval = Infinity;
+        for (let move of moves) {
+          const newState = applyMove(state, move);
+          const evalScore = minimax(newState, depth - 1, true, alpha, beta);
+          minEval = Math.min(minEval, evalScore);
+          beta = Math.min(beta, evalScore);
+          if (beta <= alpha) break;
+        }
+        return minEval;
+      }
+    }
+
+    // Bestimmt den besten Zug mittels Minimax
+    function findBestMove(state, depth) {
+      const moves = getValidMoves(state);
+      let bestMove = null;
+      let bestEval = -Infinity;
+      for (let move of moves) {
+        const newState = applyMove(state, move);
+        const evalScore = minimax(newState, depth - 1, false, -Infinity, Infinity);
+        if (evalScore > bestEval) {
+          bestEval = evalScore;
+          bestMove = move;
+        }
+      }
+      return bestMove;
+    }
+
+    // KI-Zug: Je nach Schwierigkeitsgrad wird ein Zug gewählt.
+    function aiTurn() {
+      if (isTerminal(heaps)) {
+        renderGame();
+        return;
+      }
+      const difficulty = document.getElementById("difficulty").value;
+      let move, depth;
+      if (difficulty === "easy") {
+        // Zufälliger Zug
+        const moves = getValidMoves(heaps);
+        move = moves[Math.floor(Math.random() * moves.length)];
+      } else if (difficulty === "medium") {
+        depth = 6; // Flachere Suche
+        move = findBestMove(heaps, depth);
+        if (!move) {
+          const moves = getValidMoves(heaps);
+          move = moves[Math.floor(Math.random() * moves.length)];
+        }
+      } else { // "hard"
+        depth = 20; // Sucht praktisch in den gesamten Baum (da Nim bei kleinen Heaps wenig Knoten hat)
+        move = findBestMove(heaps, depth);
+        if (!move) {
+          const moves = getValidMoves(heaps);
+          move = moves[Math.floor(Math.random() * moves.length)];
+        }
+      }
+      alert("KI entfernt " + move.remove + " Stein(e) aus Heap " + (move.heap + 1));
+      heaps = applyMove(heaps, move);
+      if (isTerminal(heaps)) {
+        currentPlayer = AI_PLAYER;
+        renderGame();
+        return;
+      }
+      currentPlayer = HUMAN_PLAYER;
+      renderGame();
+    }
+
+    // Initialisierung
+    renderGame();
+  </script>
+</body>
+</html>
