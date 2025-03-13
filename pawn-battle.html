@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pawn Battle – Spiel gegen KI</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 10px;
+    }
+    h1 {
+      margin-bottom: 0.5em;
+    }
+    #controls {
+      margin-bottom: 1em;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      grid-template-rows: repeat(5, 60px);
+      gap: 5px;
+      justify-content: center;
+      margin-bottom: 1em;
+    }
+    .cell {
+      width: 60px;
+      height: 60px;
+      background: #eee;
+      border: 2px solid #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .cell:hover {
+      background: #ddd;
+    }
+    .selected {
+      background: #aaf;
+    }
+    .piece {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      pointer-events: none;
+    }
+    .W {
+      background: #fff;
+      color: #000;
+      border: 2px solid #000;
+    }
+    .B {
+      background: #000;
+    }
+    #message {
+      margin-bottom: 1em;
+      font-size: 18px;
+      min-height: 1.2em;
+    }
+    /* Responsive Anpassung */
+    @media (max-width: 500px) {
+      #board {
+        grid-template-columns: repeat(5, 45px);
+        grid-template-rows: repeat(5, 45px);
+      }
+      .cell {
+        width: 45px;
+        height: 45px;
+        font-size: 16px;
+      }
+      .piece {
+        width: 38px;
+        height: 38px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Pawn Battle – Spiel gegen KI</h1>
+  <div id="controls">
+    <label for="aiDifficulty">KI Schwierigkeitsgrad:</label>
+    <select id="aiDifficulty">
+      <option value="easy">Einfach</option>
+      <option value="medium">Mittel</option>
+      <option value="hard">Schwer</option>
+    </select>
+    <button id="resetButton">Reset</button>
+  </div>
+  <div id="message"></div>
+  <div id="board"></div>
+
+  <script>
+    /* --- Spielvariablen --- */
+    // Brett als 5x5-Array:
+    // 'W' = weiß (Spieler), 'B' = schwarz (KI), null = leer
+    let board, currentTurn, gameOver, selectedCell;
+    let aiDifficulty = "easy"; // Standard
+    const boardSize = 5;
+    
+    const boardElement = document.getElementById("board");
+    const messageElement = document.getElementById("message");
+    const aiSelectElement = document.getElementById("aiDifficulty");
+    const resetButton = document.getElementById("resetButton");
+
+    /* --- Initialisierung --- */
+    function initGame() {
+      board = [];
+      // Zeilen 0 bis 4 erstellen
+      for (let r = 0; r < boardSize; r++) {
+        board[r] = [];
+        for (let c = 0; c < boardSize; c++) {
+          board[r][c] = null;
+        }
+      }
+      // KI (schwarz) in oberster Reihe, Spieler (weiß) in unterster
+      for (let c = 0; c < boardSize; c++) {
+        board[0][c] = 'B';
+        board[boardSize - 1][c] = 'W';
+      }
+      currentTurn = 'W'; // Spieler beginnt
+      gameOver = false;
+      selectedCell = null;
+      updateMessage("Dein Zug: Wähle einen weißen Bauern aus.");
+      renderBoard();
+      aiDifficulty = aiSelectElement.value;
+    }
+
+    /* --- Brett rendern --- */
+    function renderBoard() {
+      boardElement.innerHTML = "";
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.addEventListener("click", onCellClick);
+          if (board[r][c]) {
+            const piece = document.createElement("div");
+            piece.classList.add("piece", board[r][c]);
+            piece.textContent = board[r][c];
+            cell.appendChild(piece);
+          }
+          boardElement.appendChild(cell);
+        }
+      }
+    }
+
+    /* --- Nachricht aktualisieren --- */
+    function updateMessage(msg) {
+      messageElement.textContent = msg;
+    }
+
+    /* --- Klick-Handler für Spielerzüge --- */
+    function onCellClick(e) {
+      if (gameOver || currentTurn !== 'W') return;
+      const r = parseInt(e.currentTarget.dataset.row);
+      const c = parseInt(e.currentTarget.dataset.col);
+
+      // Erstes Klicken: Auswahl eines weißen Bauern
+      if (!selectedCell) {
+        if (board[r][c] === 'W') {
+          selectedCell = {r, c};
+          e.currentTarget.classList.add("selected");
+          updateMessage("Wähle ein gültiges Zielfeld für diesen Bauern.");
+        }
+      } else {
+        // Prüfe, ob der Zug gültig ist
+        const moves = getLegalMovesForCell(selectedCell.r, selectedCell.c, 'W', board);
+        const isValid = moves.some(move => move.r === r && move.c === c);
+        if (isValid) {
+          // Zug ausführen
+          board[r][c] = 'W';
+          board[selectedCell.r][selectedCell.c] = null;
+          clearSelection();
+          renderBoard();
+          // Gewinn-Check: Weiß gewinnt, wenn eine weiße Figur in Zeile 0 ankommt
+          if (r === 0) {
+            updateMessage("Gewonnen! Du hast die gegnerische Reihe erreicht.");
+            gameOver = true;
+            return;
+          }
+          // Falls KI (schwarz) keine Züge hat
+          if (getAllLegalMoves('B', board).length === 0) {
+            updateMessage("Gewonnen! Die KI kann keinen Zug mehr machen.");
+            gameOver = true;
+            return;
+          }
+          currentTurn = 'B';
+          updateMessage("KI ist am Zug...");
+          setTimeout(aiMove, 500);
+        } else {
+          updateMessage("Ungültiger Zug. Wähle erneut einen weißen Bauern.");
+          clearSelection();
+        }
+      }
+    }
+
+    function clearSelection() {
+      selectedCell = null;
+      document.querySelectorAll(".cell").forEach(cell => cell.classList.remove("selected"));
+    }
+
+    /* --- Ermittlung legaler Züge für einen Bauern --- */
+    function getLegalMovesForCell(r, c, player, boardState) {
+      const moves = [];
+      if (player === 'W') {
+        let newRow = r - 1;
+        if (newRow >= 0) {
+          // Geradeaus
+          if (!boardState[newRow][c]) moves.push({r: newRow, c: c});
+          // Diagonal links
+          if (c - 1 >= 0 && boardState[newRow][c - 1] === 'B') moves.push({r: newRow, c: c - 1});
+          // Diagonal rechts
+          if (c + 1 < boardSize && boardState[newRow][c + 1] === 'B') moves.push({r: newRow, c: c + 1});
+        }
+      } else if (player === 'B') {
+        let newRow = r + 1;
+        if (newRow < boardSize) {
+          if (!boardState[newRow][c]) moves.push({r: newRow, c: c});
+          if (c - 1 >= 0 && boardState[newRow][c - 1] === 'W') moves.push({r: newRow, c: c - 1});
+          if (c + 1 < boardSize && boardState[newRow][c + 1] === 'W') moves.push({r: newRow, c: c + 1});
+        }
+      }
+      return moves;
+    }
+
+    /* --- Alle legalen Züge für einen Spieler --- */
+    function getAllLegalMoves(player, boardState) {
+      let moves = [];
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          if (boardState[r][c] === player) {
+            let cellMoves = getLegalMovesForCell(r, c, player, boardState);
+            cellMoves.forEach(move => {
+              moves.push({from: {r, c}, to: move});
+            });
+          }
+        }
+      }
+      return moves;
+    }
+
+    /* --- KI-Zug --- */
+    function aiMove() {
+      if (gameOver) return;
+      let moves = getAllLegalMoves('B', board);
+      if (moves.length === 0) {
+        updateMessage("Gewonnen! Du hast die KI blockiert.");
+        gameOver = true;
+        return;
+      }
+      let chosenMove;
+      if (aiDifficulty === "easy") {
+        chosenMove = moves[Math.floor(Math.random() * moves.length)];
+      } else {
+        let depth = (aiDifficulty === "hard") ? 8 : 4;
+        let bestScore = -Infinity;
+        for (const move of moves) {
+          let newBoard = copyBoard(board);
+          newBoard[move.to.r][move.to.c] = 'B';
+          newBoard[move.from.r][move.from.c] = null;
+          let score = minimax(newBoard, 'W', depth - 1, false);
+          if (score > bestScore) {
+            bestScore = score;
+            chosenMove = move;
+          }
+        }
+      }
+      board[chosenMove.to.r][chosenMove.to.c] = 'B';
+      board[chosenMove.from.r][chosenMove.from.c] = null;
+      renderBoard();
+      // Sieg-Check: Schwarze gewinnen, wenn ein Bauer die unterste Zeile erreicht
+      if (chosenMove.to.r === boardSize - 1) {
+        updateMessage("Verloren! Die KI hat die gegnerische Reihe erreicht.");
+        gameOver = true;
+        return;
+      }
+      if (getAllLegalMoves('W', board).length === 0) {
+        updateMessage("Verloren! Du hast keine Züge mehr.");
+        gameOver = true;
+        return;
+      }
+      currentTurn = 'W';
+      updateMessage("Dein Zug: Wähle einen weißen Bauern aus.");
+    }
+
+    /* --- Minimax-Algorithmus --- */
+    // Bewertungswerte: +1000 für schwarzen (KI-)Sieg, -1000 für weißen Sieg.
+    function minimax(boardState, turn, depth, isMaximizing) {
+      // Terminal-Checks:
+      // Weiß gewinnt, wenn ein weißer Bauer in Zeile 0 landet.
+      for (let c = 0; c < boardSize; c++) {
+        if (boardState[0][c] === 'W') return -1000;
+      }
+      // Schwarz gewinnt, wenn ein schwarzer Bauer in der letzten Zeile landet.
+      for (let c = 0; c < boardSize; c++) {
+        if (boardState[boardSize - 1][c] === 'B') return 1000;
+      }
+      // Wenn der aktuelle Spieler keine Züge hat, verliert er.
+      let legalMoves = getAllLegalMoves(turn, boardState);
+      if (legalMoves.length === 0) {
+        return turn === 'W' ? 1000 : -1000;
+      }
+      if (depth === 0) return 0;
+
+      if (isMaximizing) {
+        let best = -Infinity;
+        for (const move of legalMoves) {
+          let newBoard = copyBoard(boardState);
+          newBoard[move.to.r][move.to.c] = turn;
+          newBoard[move.from.r][move.from.c] = null;
+          let nextTurn = (turn === 'B') ? 'W' : 'B';
+          let score = minimax(newBoard, nextTurn, depth - 1, false);
+          best = Math.max(best, score);
+        }
+        return best;
+      } else {
+        let best = Infinity;
+        for (const move of legalMoves) {
+          let newBoard = copyBoard(boardState);
+          newBoard[move.to.r][move.to.c] = turn;
+          newBoard[move.from.r][move.from.c] = null;
+          let nextTurn = (turn === 'B') ? 'W' : 'B';
+          let score = minimax(newBoard, nextTurn, depth - 1, true);
+          best = Math.min(best, score);
+        }
+        return best;
+      }
+    }
+
+    function copyBoard(boardState) {
+      return boardState.map(row => row.slice());
+    }
+
+    /* --- Eventlistener --- */
+    resetButton.addEventListener("click", initGame);
+    aiSelectElement.addEventListener("change", () => {
+      aiDifficulty = aiSelectElement.value;
+    });
+
+    // Spielstart
+    initGame();
+  </script>
+</body>
+</html>
