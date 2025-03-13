@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ataxx – Spiel gegen KI</title>
+  <style>
+    /* Basis-Styling */
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+    #gameContainer {
+      max-width: 500px;
+      margin: 20px auto;
+      padding: 10px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    h1 { margin-top: 0; }
+    /* Steuerungselemente */
+    button, select {
+      margin: 10px;
+      padding: 10px;
+      font-size: 1em;
+    }
+    #message { margin: 10px; font-weight: bold; }
+    /* Spielfeld als CSS-Grid */
+    #board {
+      display: grid;
+      gap: 2px;
+      margin: 10px auto;
+      background: #888;
+      /* Die Spaltenzahl wird in renderBoard() gesetzt */
+    }
+    .cell {
+      background: #eee;
+      border: 1px solid #ccc;
+      position: relative;
+      width: 100%;
+      padding-top: 100%; /* Quadrat */
+    }
+    .cellContent {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5em;
+    }
+    /* Spielsteine */
+    .player {
+      background: red;
+      border-radius: 50%;
+      width: 80%;
+      height: 80%;
+    }
+    .ai {
+      background: blue;
+      border-radius: 50%;
+      width: 80%;
+      height: 80%;
+    }
+    /* Markierung gültiger Züge */
+    .highlight {
+      background: yellow !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <h1>Ataxx</h1>
+    <div>
+      <label for="difficulty">KI-Schwierigkeit:</label>
+      <select id="difficulty">
+        <option value="easy">Einfach</option>
+        <option value="medium">Mittel</option>
+        <option value="hard">Schwer</option>
+      </select>
+      <button id="resetButton">Reset</button>
+    </div>
+    <div id="message"></div>
+    <div id="board"></div>
+  </div>
+
+  <script>
+    // Globale Variablen
+    const BOARD_SIZE = 7;
+    let board = []; // 2D-Array: 0 = leer, 1 = Spieler (rot), 2 = KI (blau)
+    let currentTurn = "player"; // "player" oder "ai"
+    let selectedPiece = null;  // Aktuell ausgewähltes Feld des Spielers
+    const boardDiv = document.getElementById("board");
+    const messageDiv = document.getElementById("message");
+    const difficultySelect = document.getElementById("difficulty");
+    const resetButton = document.getElementById("resetButton");
+
+    // Initialisierung: Erzeugt das leere Brett und setzt Startpositionen
+    function initBoard() {
+      board = [];
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        board[r] = [];
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          board[r][c] = 0;
+        }
+      }
+      // Startpositionen: Spieler (rot) in oben links und unten rechts;
+      board[0][0] = 1;
+      board[BOARD_SIZE - 1][BOARD_SIZE - 1] = 1;
+      // KI (blau) in oben rechts und unten links;
+      board[0][BOARD_SIZE - 1] = 2;
+      board[BOARD_SIZE - 1][0] = 2;
+      currentTurn = "player";
+      selectedPiece = null;
+      updateMessage("Dein Zug");
+      renderBoard();
+    }
+
+    // Rendert das Brett als Grid
+    function renderBoard() {
+      boardDiv.innerHTML = "";
+      boardDiv.style.gridTemplateColumns = `repeat(${BOARD_SIZE}, 1fr)`;
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          cell.id = `cell-${r}-${c}`;
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.addEventListener("click", cellClicked);
+          const cellContent = document.createElement("div");
+          cellContent.classList.add("cellContent");
+          if (board[r][c] === 1) {
+            const piece = document.createElement("div");
+            piece.classList.add("player");
+            cellContent.appendChild(piece);
+          } else if (board[r][c] === 2) {
+            const piece = document.createElement("div");
+            piece.classList.add("ai");
+            cellContent.appendChild(piece);
+          }
+          cell.appendChild(cellContent);
+          boardDiv.appendChild(cell);
+        }
+      }
+    }
+
+    // Aktualisiert die Statusmeldung
+    function updateMessage(text) {
+      messageDiv.innerText = text;
+    }
+
+    // Liefert alle legalen Züge für ein bestimmtes Feld (r, c) und Spieler
+    function getLegalMoves(r, c, player) {
+      let moves = [];
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) continue;
+          if (board[nr][nc] !== 0) continue;
+          const distance = Math.max(Math.abs(dr), Math.abs(dc));
+          let moveType = (distance === 1) ? "clone" : "jump";
+          moves.push({from: {r, c}, to: {r: nr, c: nc}, type: moveType});
+        }
+      }
+      return moves;
+    }
+
+    // Liefert alle legalen Züge für den Spieler (1 = Spieler, 2 = KI) aus dem globalen board
+    function getAllLegalMoves(player) {
+      let allMoves = [];
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (board[r][c] === player) {
+            let moves = getLegalMoves(r, c, player);
+            allMoves = allMoves.concat(moves);
+          }
+        }
+      }
+      return allMoves;
+    }
+
+    // ---------------------------
+    // Funktionen für Minimax (arbeiten mit übergebenen Brettzustand)
+    function getLegalMovesForBoard(boardState, r, c, player) {
+      let moves = [];
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) continue;
+          if (boardState[nr][nc] !== 0) continue;
+          const distance = Math.max(Math.abs(dr), Math.abs(dc));
+          let moveType = (distance === 1) ? "clone" : "jump";
+          moves.push({from: {r, c}, to: {r: nr, c: nc}, type: moveType});
+        }
+      }
+      return moves;
+    }
+
+    function getAllLegalMovesForBoard(boardState, player) {
+      let allMoves = [];
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (boardState[r][c] === player) {
+            allMoves = allMoves.concat(getLegalMovesForBoard(boardState, r, c, player));
+          }
+        }
+      }
+      return allMoves;
+    }
+
+    function isGameOverForBoard(boardState, player) {
+      return getAllLegalMovesForBoard(boardState, player).length === 0;
+    }
+
+    // ---------------------------
+    // Wendet einen Zug auf einen übergebenen Brettzustand an und gibt das neue board zurück
+    function applyMoveToBoard(move, boardState, player) {
+      // Klone den Brettzustand
+      let newBoard = boardState.map(row => row.slice());
+      const {r: fromR, c: fromC} = move.from;
+      const {r: toR, c: toC} = move.to;
+      if (move.type === "jump") {
+        newBoard[fromR][fromC] = 0;
+      }
+      newBoard[toR][toC] = player;
+      // Wandle alle angrenzenden gegnerischen Steine um
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const nr = toR + dr;
+          const nc = toC + dc;
+          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) continue;
+          if (newBoard[nr][nc] !== 0 && newBoard[nr][nc] !== player) {
+            newBoard[nr][nc] = player;
+          }
+        }
+      }
+      return newBoard;
+    }
+
+    // Wendet einen Zug auf das globale board an
+    function applyMove(move, boardState, player) {
+      return applyMoveToBoard(move, boardState, player);
+    }
+
+    // ---------------------------
+    // Spielerzug: Bei Klick wird entweder ein eigener Stein ausgewählt (und die gültigen Zielzellen hervorgehoben) oder
+    // ein zuvor markierter Zug ausgeführt.
+    function cellClicked(e) {
+      if (currentTurn !== "player") return;
+      const cell = e.currentTarget;
+      const r = parseInt(cell.dataset.row);
+      const c = parseInt(cell.dataset.col);
+      // Klickt der Spieler auf einen eigenen Stein?
+      if (board[r][c] === 1) {
+        selectedPiece = {r, c};
+        clearHighlights();
+        const legal = getLegalMoves(r, c, 1);
+        legal.forEach(move => {
+          const dest = document.getElementById(`cell-${move.to.r}-${move.to.c}`);
+          dest.classList.add("highlight");
+        });
+      } else if (selectedPiece) {
+        // Wurde auf eine hervorgehobene Zelle geklickt?
+        if (cell.classList.contains("highlight")) {
+          const legal = getLegalMoves(selectedPiece.r, selectedPiece.c, 1);
+          let chosenMove = legal.find(move => move.to.r === r && move.to.c === c);
+          if (chosenMove) {
+            board = applyMove(chosenMove, board, 1);
+            selectedPiece = null;
+            clearHighlights();
+            renderBoard();
+            if (getAllLegalMoves(2).length === 0) {
+              updateMessage("Game over. Du gewinnst!");
+            } else {
+              currentTurn = "ai";
+              updateMessage("KI denkt…");
+              setTimeout(aiMove, 500);
+            }
+          }
+        }
+      }
+    }
+
+    // Entfernt alle Hervorhebungen
+    function clearHighlights() {
+      document.querySelectorAll(".highlight").forEach(cell => cell.classList.remove("highlight"));
+    }
+
+    // ---------------------------
+    // KI-Zug: Je nach Schwierigkeitsgrad wird entweder zufällig oder per Minimax ein Zug ausgewählt.
+    function aiMove() {
+      const difficulty = difficultySelect.value;
+      let move;
+      const legal = getAllLegalMoves(2);
+      if (legal.length === 0) {
+        updateMessage("Game over. Du gewinnst!");
+        return;
+      }
+      if (difficulty === "easy") {
+        // Zufälliger Zug
+        move = legal[Math.floor(Math.random() * legal.length)];
+      } else {
+        // Minimax-Zug: Bei "medium" wird Tiefe 2, bei "hard" Tiefe 3 gesucht.
+        let depth = (difficulty === "medium") ? 2 : 3;
+        let result = minimax(board, depth, true, -Infinity, Infinity);
+        move = result.move;
+        if (!move) {
+          updateMessage("Game over. Du gewinnst!");
+          return;
+        }
+      }
+      board = applyMove(move, board, 2);
+      renderBoard();
+      if (getAllLegalMoves(1).length === 0) {
+        updateMessage("Game over. KI gewinnt!");
+      } else {
+        currentTurn = "player";
+        updateMessage("Dein Zug");
+      }
+    }
+
+    // ---------------------------
+    // Bewertungsfunktion: Differenz zwischen KI- und Spielersteinen
+    function evaluate(boardState) {
+      let aiCount = 0, playerCount = 0;
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (boardState[r][c] === 2) aiCount++;
+          else if (boardState[r][c] === 1) playerCount++;
+        }
+      }
+      return aiCount - playerCount;
+    }
+
+    // Minimax mit Alpha-Beta-Pruning (simuliert abwechselnd Züge für KI und Spieler)
+    function minimax(boardState, depth, maximizingPlayer, alpha, beta) {
+      let currentPlayer = maximizingPlayer ? 2 : 1;
+      if (depth === 0 || isGameOverForBoard(boardState, currentPlayer)) {
+        return { score: evaluate(boardState), move: null };
+      }
+      let legalMoves = getAllLegalMovesForBoard(boardState, currentPlayer);
+      if (legalMoves.length === 0) {
+        return { score: evaluate(boardState), move: null };
+      }
+      let bestMove = null;
+      if (maximizingPlayer) {
+        let maxEval = -Infinity;
+        for (let move of legalMoves) {
+          let newBoard = applyMoveToBoard(move, boardState, 2);
+          let evalResult = minimax(newBoard, depth - 1, false, alpha, beta).score;
+          if (evalResult > maxEval) {
+            maxEval = evalResult;
+            bestMove = move;
+          }
+          alpha = Math.max(alpha, evalResult);
+          if (beta <= alpha) break;
+        }
+        return { score: maxEval, move: bestMove };
+      } else {
+        let minEval = Infinity;
+        for (let move of legalMoves) {
+          let newBoard = applyMoveToBoard(move, boardState, 1);
+          let evalResult = minimax(newBoard, depth - 1, true, alpha, beta).score;
+          if (evalResult < minEval) {
+            minEval = evalResult;
+            bestMove = move;
+          }
+          beta = Math.min(beta, evalResult);
+          if (beta <= alpha) break;
+        }
+        return { score: minEval, move: bestMove };
+      }
+    }
+
+    // ---------------------------
+    // Event Listener für Reset
+    resetButton.addEventListener("click", initBoard);
+
+    // Starte das Spiel
+    initBoard();
+  </script>
+</body>
+</html>
