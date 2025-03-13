@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dame gegen AI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 10px;
+      background: #f0f0f0;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 50px);
+      grid-template-rows: repeat(8, 50px);
+      border: 2px solid #333;
+    }
+    .square {
+      width: 50px;
+      height: 50px;
+    }
+    .light {
+      background-color: #eee;
+    }
+    .dark {
+      background-color: #777;
+    }
+    .piece {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin: 5px;
+    }
+    .red {
+      background-color: red;
+    }
+    .black {
+      background-color: black;
+    }
+    .king {
+      border: 2px solid gold;
+    }
+    .selected {
+      outline: 3px solid yellow;
+    }
+    #controls {
+      margin-top: 10px;
+      text-align: center;
+    }
+    button, select {
+      padding: 5px 10px;
+      font-size: 16px;
+      margin: 5px;
+    }
+    @media (max-width: 500px) {
+      #board {
+        grid-template-columns: repeat(8, 40px);
+        grid-template-rows: repeat(8, 40px);
+      }
+      .square {
+        width: 40px;
+        height: 40px;
+      }
+      .piece {
+        width: 32px;
+        height: 32px;
+        margin: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Dame gegen AI</h1>
+  <div id="board"></div>
+  <div id="controls">
+    <select id="difficulty">
+      <!-- Für "Einfach" wird nun ein zufälliger Zug gewählt -->
+      <option value="1">Einfach</option>
+      <option value="4">Mittel</option>
+      <option value="6">Schwer</option>
+    </select>
+    <button id="reset">Reset</button>
+    <div id="status"></div>
+  </div>
+  <script>
+    // Globale Variablen
+    let board = [];
+    let currentPlayer = 1; // 1 = Mensch (rot), -1 = AI (schwarz)
+    let selected = null;   // Ausgewählter Stein {row, col}
+    let validMoves = [];   // Mögliche Züge des ausgewählten Steins
+    const boardSize = 8;
+    
+    // Initialisiere das Spielbrett
+    function initBoard() {
+      board = [];
+      for (let r = 0; r < boardSize; r++) {
+        board[r] = [];
+        for (let c = 0; c < boardSize; c++) {
+          board[r][c] = 0;
+        }
+      }
+      // Setze AI-Steine (-1) in den Zeilen 0,1,2 auf dunklen Feldern
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          if ((r + c) % 2 === 1) {
+            board[r][c] = -1;
+          }
+        }
+      }
+      // Setze menschliche Steine (1) in den Zeilen 5,6,7 auf dunklen Feldern
+      for (let r = boardSize - 3; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          if ((r + c) % 2 === 1) {
+            board[r][c] = 1;
+          }
+        }
+      }
+      currentPlayer = 1;
+      selected = null;
+      validMoves = [];
+      drawBoard();
+      document.getElementById('status').innerText = "Dein Zug";
+    }
+    
+    // Zeichnet das Brett und die Steine
+    function drawBoard() {
+      const boardDiv = document.getElementById('board');
+      boardDiv.innerHTML = '';
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          const square = document.createElement('div');
+          square.classList.add('square');
+          if ((r + c) % 2 === 0) {
+            square.classList.add('light');
+          } else {
+            square.classList.add('dark');
+          }
+          square.dataset.row = r;
+          square.dataset.col = c;
+          square.addEventListener('click', onSquareClick);
+          
+          // Markiere den ausgewählten Stein
+          if (selected && selected.row === r && selected.col === c) {
+            square.classList.add('selected');
+          }
+          // Hebe mögliche Zugziele hervor (letztes Feld der Zugsequenz)
+          if (selected && validMoves.some(m => 
+              m.from.row === selected.row && m.from.col === selected.col &&
+              m.to[m.to.length - 1].row === r && m.to[m.to.length - 1].col === c)) {
+            square.style.boxShadow = "inset 0 0 0 3px yellow";
+          }
+          
+          // Falls ein Stein vorhanden, zeichne ihn
+          const piece = board[r][c];
+          if (piece !== 0) {
+            const pieceDiv = document.createElement('div');
+            pieceDiv.classList.add('piece');
+            if (piece === 1 || piece === 2) {
+              pieceDiv.classList.add('red');
+            } else {
+              pieceDiv.classList.add('black');
+            }
+            if (Math.abs(piece) === 2) {
+              pieceDiv.classList.add('king');
+            }
+            square.appendChild(pieceDiv);
+          }
+          
+          boardDiv.appendChild(square);
+        }
+      }
+    }
+    
+    // Klick-Handler für ein Brettfeld
+    function onSquareClick(e) {
+      const r = parseInt(e.currentTarget.dataset.row);
+      const c = parseInt(e.currentTarget.dataset.col);
+      
+      // Falls ein gültiges Zugziel angeklickt wird
+      if (selected && validMoves.length > 0) {
+        const move = validMoves.find(m => 
+          m.to[m.to.length - 1].row === r && m.to[m.to.length - 1].col === c);
+        if (move) {
+          makeMove(move);
+          selected = null;
+          validMoves = [];
+          drawBoard();
+          setTimeout(aiTurn, 500);
+          return;
+        }
+      }
+      
+      // Auswahl eines eigenen Steins
+      if (board[r][c] !== 0 && Math.sign(board[r][c]) === currentPlayer) {
+        selected = {row: r, col: c};
+        validMoves = getMovesForPiece(r, c, board, currentPlayer);
+        drawBoard();
+      }
+    }
+    
+    // Gibt alle gültigen Züge für einen Stein zurück (inklusive Schlagzüge)
+    function getMovesForPiece(r, c, boardState, player) {
+      let moves = [];
+      // Zuerst prüfen wir auf Schläge
+      const captures = getCaptures(r, c, boardState, boardState[r][c], []);
+      if (captures.length > 0) {
+        return captures;
+      }
+      // Falls keine Schlagzüge vorhanden, normale Züge
+      const directions = [];
+      const piece = boardState[r][c];
+      if (Math.abs(piece) === 1) { // normaler Stein
+        if (player === 1) {
+          directions.push({dr: -1, dc: -1});
+          directions.push({dr: -1, dc: 1});
+        } else {
+          directions.push({dr: 1, dc: -1});
+          directions.push({dr: 1, dc: 1});
+        }
+      } else { // König
+        directions.push({dr: -1, dc: -1});
+        directions.push({dr: -1, dc: 1});
+        directions.push({dr: 1, dc: -1});
+        directions.push({dr: 1, dc: 1});
+      }
+      directions.forEach(dir => {
+        const newR = r + dir.dr;
+        const newC = c + dir.dc;
+        if (inBounds(newR, newC) && boardState[newR][newC] === 0) {
+          moves.push({
+            from: {row: r, col: c},
+            to: [{row: newR, col: newC}],
+            captures: []
+          });
+        }
+      });
+      return moves;
+    }
+    
+    // Rekursive Funktion zur Ermittlung von Schlagzügen (inklusive Mehrfachsprünge)
+    function getCaptures(r, c, boardState, piece, path) {
+      let moves = [];
+      const player = Math.sign(piece);
+      const directions = [];
+      if (Math.abs(piece) === 1) {
+        if (player === 1) {
+          directions.push({dr: -1, dc: -1});
+          directions.push({dr: -1, dc: 1});
+        } else {
+          directions.push({dr: 1, dc: -1});
+          directions.push({dr: 1, dc: 1});
+        }
+      } else { // König
+        directions.push({dr: -1, dc: -1});
+        directions.push({dr: -1, dc: 1});
+        directions.push({dr: 1, dc: -1});
+        directions.push({dr: 1, dc: 1});
+      }
+      for (let dir of directions) {
+        const midR = r + dir.dr;
+        const midC = c + dir.dc;
+        const landingR = r + 2 * dir.dr;
+        const landingC = c + 2 * dir.dc;
+        if (inBounds(landingR, landingC) && boardState[landingR][landingC] === 0 &&
+            boardState[midR][midC] !== 0 && Math.sign(boardState[midR][midC]) === -player) {
+          // Kopiere das Brett, führe den Schlag aus und entferne den Gegnerstein
+          let newBoard = copyBoard(boardState);
+          newBoard[landingR][landingC] = newBoard[r][c];
+          newBoard[r][c] = 0;
+          newBoard[midR][midC] = 0;
+          // Promotion prüfen
+          if (player === 1 && landingR === 0 && Math.abs(newBoard[landingR][landingC]) === 1) {
+            newBoard[landingR][landingC] = 2;
+          }
+          if (player === -1 && landingR === boardSize - 1 && Math.abs(newBoard[landingR][landingC]) === 1) {
+            newBoard[landingR][landingC] = -2;
+          }
+          // Rekursiv nach weiteren Schlägen suchen
+          const subsequent = getCaptures(landingR, landingC, newBoard, newBoard[landingR][landingC], path.concat([{row: landingR, col: landingC}]));
+          if (subsequent.length > 0) {
+            subsequent.forEach(move => {
+              moves.push({
+                from: {row: r, col: c},
+                to: [{row: landingR, col: landingC}].concat(move.to),
+                captures: [{row: midR, col: midC}].concat(move.captures)
+              });
+            });
+          } else {
+            moves.push({
+              from: {row: r, col: c},
+              to: [{row: landingR, col: landingC}],
+              captures: [{row: midR, col: midC}]
+            });
+          }
+        }
+      }
+      return moves;
+    }
+    
+    function inBounds(r, c) {
+      return r >= 0 && r < boardSize && c >= 0 && c < boardSize;
+    }
+    
+    // Kopiert ein Brett (2D-Array)
+    function copyBoard(boardState) {
+      return boardState.map(row => row.slice());
+    }
+    
+    // Führt einen Zug aus und aktualisiert das Brett
+    function makeMove(move) {
+      const from = move.from;
+      let piece = board[from.row][from.col];
+      board[from.row][from.col] = 0;
+      const landing = move.to[move.to.length - 1];
+      board[landing.row][landing.col] = piece;
+      if (move.captures) {
+        move.captures.forEach(cap => {
+          board[cap.row][cap.col] = 0;
+        });
+      }
+      // Promotion: Erreiche die gegnerische Grundreihe
+      if (piece === 1 && landing.row === 0) {
+        board[landing.row][landing.col] = 2;
+      }
+      if (piece === -1 && landing.row === boardSize - 1) {
+        board[landing.row][landing.col] = -2;
+      }
+      currentPlayer *= -1;
+    }
+    
+    // Überprüft, ob ein Spieler keine Züge mehr hat
+    function checkWinner() {
+      const humanMoves = getAllValidMoves(1, board);
+      const aiMoves = getAllValidMoves(-1, board);
+      if (humanMoves.length === 0) return -1;
+      if (aiMoves.length === 0) return 1;
+      return 0;
+    }
+    
+    // Sammelt alle gültigen Züge für einen Spieler
+    function getAllValidMoves(player, boardState) {
+      let moves = [];
+      // Zuerst alle Schlagzüge sammeln
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          if (boardState[r][c] !== 0 && Math.sign(boardState[r][c]) === player) {
+            let caps = getCaptures(r, c, boardState, boardState[r][c], []);
+            if (caps.length > 0) {
+              moves = moves.concat(caps);
+            }
+          }
+        }
+      }
+      if (moves.length > 0) return moves;
+      // Falls keine Schläge vorhanden, normale Züge hinzufügen
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          if (boardState[r][c] !== 0 && Math.sign(boardState[r][c]) === player) {
+            moves = moves.concat(getMovesForPiece(r, c, boardState, player));
+          }
+        }
+      }
+      return moves;
+    }
+    
+    // Bewertet das Brett: Positive Werte bedeuten Vorteil für AI
+    function evaluate(boardState) {
+      let score = 0;
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+          const piece = boardState[r][c];
+          if (piece !== 0) {
+            let value = (Math.abs(piece) === 2) ? 1.5 : 1;
+            score += (piece < 0) ? value : -value;
+          }
+        }
+      }
+      return score;
+    }
+    
+    // Minimax mit Alpha-Beta-Schnitt
+    function minimax(boardState, depth, maximizingPlayer, alpha, beta) {
+      const winner = checkWinnerState(boardState);
+      if (depth === 0 || winner !== 0) {
+        if (winner === -1) return {score: 1000};
+        if (winner === 1) return {score: -1000};
+        return {score: evaluate(boardState)};
+      }
+      
+      if (maximizingPlayer) {
+        let maxEval = -Infinity;
+        let bestMove = null;
+        let moves = getAllValidMoves(-1, boardState);
+        for (let move of moves) {
+          let newBoard = copyBoard(boardState);
+          applyMove(newBoard, move);
+          let evalObj = minimax(newBoard, depth - 1, false, alpha, beta);
+          if (evalObj.score > maxEval) {
+            maxEval = evalObj.score;
+            bestMove = move;
+          }
+          alpha = Math.max(alpha, evalObj.score);
+          if (beta <= alpha) break;
+        }
+        return {score: maxEval, move: bestMove};
+      } else {
+        let minEval = Infinity;
+        let bestMove = null;
+        let moves = getAllValidMoves(1, boardState);
+        for (let move of moves) {
+          let newBoard = copyBoard(boardState);
+          applyMove(newBoard, move);
+          let evalObj = minimax(newBoard, depth - 1, true, alpha, beta);
+          if (evalObj.score < minEval) {
+            minEval = evalObj.score;
+            bestMove = move;
+          }
+          beta = Math.min(beta, evalObj.score);
+          if (beta <= alpha) break;
+        }
+        return {score: minEval, move: bestMove};
+      }
+    }
+    
+    // Prüft in einem gegebenen Brett, ob ein Spieler keine Züge mehr hat
+    function checkWinnerState(boardState) {
+      const humanMoves = getAllValidMoves(1, boardState);
+      const aiMoves = getAllValidMoves(-1, boardState);
+      if (humanMoves.length === 0) return -1;
+      if (aiMoves.length === 0) return 1;
+      return 0;
+    }
+    
+    // Wendet einen Zug auf ein Brett an (für Minimax)
+    function applyMove(bState, move) {
+      const from = move.from;
+      let piece = bState[from.row][from.col];
+      bState[from.row][from.col] = 0;
+      const landing = move.to[move.to.length - 1];
+      bState[landing.row][landing.col] = piece;
+      if (move.captures) {
+        move.captures.forEach(cap => {
+          bState[cap.row][cap.col] = 0;
+        });
+      }
+      if (piece === 1 && landing.row === 0) {
+        bState[landing.row][landing.col] = 2;
+      }
+      if (piece === -1 && landing.row === boardSize - 1) {
+        bState[landing.row][landing.col] = -2;
+      }
+    }
+    
+    // AI-Zug: Bei "Einfach" (difficulty == 1) wird ein zufälliger Zug ausgeführt.
+    // Bei den anderen Schwierigkeitsgraden wird der Minimax-Algorithmus verwendet.
+    function aiTurn() {
+      if (currentPlayer !== -1) return;
+      const difficulty = parseInt(document.getElementById('difficulty').value);
+      let moves = getAllValidMoves(-1, board);
+      let result;
+      if (difficulty === 1) {
+        // Zufälliger Zug für die einfache AI
+        result = { move: moves[Math.floor(Math.random() * moves.length)] };
+      } else {
+        result = minimax(board, difficulty, true, -Infinity, Infinity);
+      }
+      if (result.move) {
+        makeMove(result.move);
+        drawBoard();
+        const winner = checkWinner();
+        if (winner !== 0) {
+          document.getElementById('status').innerText = winner === 1 ? "Du hast gewonnen!" : "AI gewinnt!";
+          return;
+        }
+        document.getElementById('status').innerText = "Dein Zug";
+      }
+    }
+    
+    document.getElementById('reset').addEventListener('click', initBoard);
+    initBoard();
+  </script>
+</body>
+</html>
