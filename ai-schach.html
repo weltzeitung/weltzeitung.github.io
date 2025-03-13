@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Schach gegen KI</title>
-  <!-- Einbinden der CSS-Datei von chessboard.js -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
   <style>
     body {
@@ -39,31 +38,23 @@
     <button id="resetBtn">Reset</button>
   </div>
 
-  <!-- Einbinden von jQuery (wichtig für chessboard.js) -->
+  <!-- jQuery wird benötigt -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  <!-- Einbinden von chess.js und chessboard.js -->
+  <!-- chess.js und chessboard.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
 
   <script>
-    // Globale Variablen: Schach-Engine und Board-Objekt
     var board = null;
     var game = new Chess();
     var aiThinking = false;
     var difficultySelect = document.getElementById("difficulty");
 
-    // Bewertungsfunktion: Summe der Materialwerte
+    // Bewertungsfunktion: Materialsumme
     function evaluateBoard(gameInstance) {
       var boardArray = gameInstance.board();
       var totalEvaluation = 0;
-      var pieceValues = {
-        p: 100,
-        n: 320,
-        b: 330,
-        r: 500,
-        q: 900,
-        k: 20000
-      };
+      var pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
       for (var i = 0; i < boardArray.length; i++) {
         for (var j = 0; j < boardArray[i].length; j++) {
           var piece = boardArray[i][j];
@@ -76,7 +67,7 @@
       return totalEvaluation;
     }
 
-    // Minimax-Algorithmus mit Alpha-Beta-Pruning
+    // Minimax mit Alpha-Beta-Pruning
     function minimax(gameInstance, depth, alpha, beta, isMaximizingPlayer) {
       if (depth === 0 || gameInstance.game_over()) {
         return [evaluateBoard(gameInstance), null];
@@ -115,12 +106,10 @@
       }
     }
 
-    // Hilfsfunktion, um den besten Zug zu ermitteln (basierend auf aktueller Farbe)
     function getBestMove(gameInstance, depth) {
       return minimax(gameInstance, depth, -Infinity, Infinity, gameInstance.turn() === 'w')[1];
     }
 
-    // Funktion, die den KI-Zug ausführt
     function makeAIMove() {
       if (game.game_over()) return;
       aiThinking = true;
@@ -128,18 +117,15 @@
         var difficulty = difficultySelect.value;
         var move;
         if (difficulty === 'easy') {
-          // Zufälliger Zug
           var moves = game.moves();
           move = moves[Math.floor(Math.random() * moves.length)];
         } else if (difficulty === 'medium') {
-          // Minimax mit geringerer Suchtiefe
           move = getBestMove(game, 2);
           if (!move) {
             var moves = game.moves();
             move = moves[Math.floor(Math.random() * moves.length)];
           }
         } else if (difficulty === 'hard') {
-          // Minimax mit tiefer Suchtiefe (sehr herausfordernd)
           move = getBestMove(game, 4);
           if (!move) {
             var moves = game.moves();
@@ -152,12 +138,12 @@
       }, 250);
     }
 
-    // Konfiguration des Schachbretts
     var config = {
       draggable: true,
       position: 'start',
+      // Lokaler Pfad zu den Bildern
+      pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
       onDragStart: function(source, piece) {
-        // Verhindere Züge, wenn die KI denkt, das Spiel vorbei ist oder der falsche Stein gewählt wurde
         if (aiThinking || game.game_over() ||
             (game.turn() === 'w' && piece.indexOf('b') === 0) ||
             (game.turn() === 'b' && piece.indexOf('w') === 0)) {
@@ -165,16 +151,13 @@
         }
       },
       onDrop: function(source, target) {
-        // Versuche den Zug auszuführen
         var move = game.move({
           from: source,
           to: target,
-          promotion: 'q' // immer zur Dame
+          promotion: 'q'
         });
-        // Ungültiger Zug? Dann Stein zurückziehen
         if (move === null) return 'snapback';
         board.position(game.fen());
-        // Nach einem gültigen Zug der Spieler: KI-Zug einleiten
         setTimeout(makeAIMove, 250);
       },
       onSnapEnd: function() {
@@ -182,10 +165,8 @@
       }
     };
 
-    // Initialisierung des Schachbretts
     board = Chessboard('board', config);
 
-    // Reset-Knopf: Spiel und Board zurücksetzen
     document.getElementById("resetBtn").addEventListener("click", function() {
       game.reset();
       board.start();
