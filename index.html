@@ -1,74 +1,224 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weltzeitung</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
-        body {
-            background-color: #1e1e1e;
-            color: #fff;
-            text-align: center;
-        }
-        header {
-            background: #333;
-            padding: 20px;
-        }
-        a {
-            color: #fff;
-            text-decoration: none;
-            font-size: 18px;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        .container {
-            margin-top: 50px;
-            padding: 20px;
-        }
-        .hero {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .description {
-            font-size: 18px;
-            max-width: 600px;
-            margin: auto;
-            line-height: 1.5;
-        }
-        footer {
-            margin-top: 50px;
-            padding: 20px;
-            background: #333;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Startseite</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f0f0f0;
+    }
+    /* Header-Bereich über allen Kategorien */
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .header-container h2 {
+      margin: 0;
+    }
+    .header-container .last-modified {
+      font-size: 0.9em;
+      color: #555;
+    }
+    /* Kategorien */
+    .category {
+      margin-bottom: 30px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .category h2 {
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+      margin-bottom: 10px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    li {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+    }
+    li a {
+      text-decoration: none;
+      color: #007BFF;
+      font-weight: bold;
+    }
+    /* Container für Zeitstempel und zusätzlichen Text */
+    .right {
+      margin-left: auto;
+      text-align: right;
+    }
+    .timestamp, .extra {
+      display: block;
+      font-size: 0.9em;
+      color: #555;
+    }
+  </style>
 </head>
 <body>
-
-<div class="container">
-    <div class="hero">Willkommen bei Weltzeitung!</div>
-    <div class="description">
-        Hier findest du alle möglichen random Dinge.
-        Viel Spaß beim Entdecken!
-    </div>
-</div>
-
-<a href="tictactoe.html">TicTacToe</a><br>
-<a href="meta-tictactoe.html">Meta TicTacToe</a><br>
-<a href="fake-zeitung.html">Fake Zeitung</a><br>
-<a href="dotsandboxes.html">Dots and Boxes</a><br>
-<a href="städte-kaufen.html">Fake Städte kaufen</a><br>
+  <!-- Header über allen Kategorien -->
+  <div class="header-container">
+    <h2>Meine Links</h2>
+    <div class="last-modified">zuletzt geändert:</div>
+  </div>
+  
+  <!-- Kategorie: AI Spiele -->
+  <div class="category">
+    <h2>AI Spiele</h2>
+    <ul>
+      <li>
+        <a href="ai-breakthrough.html">ai-breakthrough.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-12">placeholder</span>
+          <!-- Optionaler zusätzlicher Textbaustein -->
+        </div>
+      </li>
+      <li>
+        <a href="ai-dame.html">ai-dame.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-12">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="ai-dotsandboxes.html">ai-dotsandboxes.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-12">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="ai-gomoku.html">ai-gomoku.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-12">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="ai-isolation.html">ai-isolation.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-12">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="ai-mancala.html">ai-mancala.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-12">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="ai-meta-tictactoe.html">ai-meta-tictactoe.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-12">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="ai-nim.html">ai-nim.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-12">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="ai-orthello.html">ai-orthello.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-12">placeholder</span>
+        </div>
+      </li>
+    </ul>
+  </div>
+  
+  <!-- Kategorie: Klassische Spiele -->
+  <div class="category">
+    <h2>Klassische Spiele</h2>
+    <ul>
+      <li>
+        <a href="meta-tictactoe.html">meta-tictactoe.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-10">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="tictactoe.html">tictactoe.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-12">placeholder</span>
+        </div>
+      </li>
+    </ul>
+  </div>
+  
+  <!-- Kategorie: Sonstiges -->
+  <div class="category">
+    <h2>Sonstiges</h2>
+    <ul>
+      <li>
+        <a href="fake-zeitung.html">fake-zeitung.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-10">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="impressum.html">impressum.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-10">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="index.html">index.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-10">placeholder</span>
+        </div>
+      </li>
+      <li>
+        <a href="städte-kaufen.html">städte-kaufen.html</a>
+        <div class="right">
+          <span class="timestamp" data-date="2025-03-05">placeholder</span>
+        </div>
+      </li>
+    </ul>
+  </div>
+  
+  <script>
+    // Diese Funktion berechnet, wie viele Tage seit dem angegebenen Datum vergangen sind.
+    // Ist der Unterschied > 6 Tage, wird das Datum (im deutschen Format) angezeigt,
+    // ansonsten "heute", "gestern" oder "x Tage her".
+    function updateTimestamps() {
+      const spans = document.querySelectorAll('.timestamp');
+      spans.forEach(span => {
+        const dateString = span.getAttribute('data-date');
+        const givenDate = new Date(dateString);
+        const today = new Date();
+        // Beide Daten auf Mitternacht setzen, um nur ganze Tage zu berücksichtigen
+        const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const givenMidnight = new Date(givenDate.getFullYear(), givenDate.getMonth(), givenDate.getDate());
+        const diffMs = todayMidnight - givenMidnight;
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        
+        if(diffDays > 6) {
+          span.textContent = givenDate.toLocaleDateString("de-DE");
+        } else if(diffDays === 0) {
+          span.textContent = "heute";
+        } else if(diffDays === 1) {
+          span.textContent = "gestern";
+        } else {
+          span.textContent = diffDays + " Tage her";
+        }
+      });
+    }
     
-<footer>
-    &copy; 2025 Weltzeitung <br> <a href="impressum.html">Impressum</a>
-</footer>
-
+    document.addEventListener("DOMContentLoaded", updateTimestamps);
+  </script>
 </body>
 </html>
