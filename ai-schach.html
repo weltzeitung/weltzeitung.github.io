@@ -141,8 +141,8 @@
     var config = {
       draggable: true,
       position: 'start',
-      // Lokaler Pfad zu den Bildern
-      pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
+      // Pfad zu den Bildern angepasst an "chesspieces/wikipedia/"
+      pieceTheme: 'chesspieces/wikipedia/{piece}.png',
       onDragStart: function(source, piece) {
         if (aiThinking || game.game_over() ||
             (game.turn() === 'w' && piece.indexOf('b') === 0) ||
