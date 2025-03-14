@@ -24,6 +24,26 @@
       font-size: 16px;
       margin: 5px;
     }
+    /* Damit die Overlays korrekt positioniert werden */
+    #board .square-55d63 {
+      position: relative;
+    }
+    /* Stil für die legalen Zugmarkierungen (dunkelgraue Kreise) */
+    .legal-move {
+      width: 20px;
+      height: 20px;
+      background-color: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    /* Optional: Markierung der ausgewählten Figur (Rahmen) */
+    .selected-square {
+      box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.5);
+    }
   </style>
 </head>
 <body>
@@ -49,6 +69,10 @@
     var game = new Chess();
     var aiThinking = false;
     var difficultySelect = document.getElementById("difficulty");
+
+    // Globale Variablen für Klick-Zugsteuerung
+    var selectedSquare = null;
+    var legalMoves = [];
 
     // Bewertungsfunktion: Materialsumme
     function evaluateBoard(gameInstance) {
@@ -138,12 +162,29 @@
       }, 250);
     }
 
+    // Funktionen zum Markieren und Entfernen der Zugpunkte
+    function highlightSquares(squares) {
+      removeHighlights();
+      squares.forEach(function(sq) {
+        var squareEl = $('#board .square-55d63[data-square="' + sq + '"]');
+        if (squareEl.length > 0) {
+          squareEl.append('<div class="legal-move"></div>');
+        }
+      });
+    }
+    function removeHighlights() {
+      $('#board .legal-move').remove();
+      $('#board .square-55d63').removeClass('selected-square');
+    }
+
+    // Konfiguration des Schachbretts (Drag & Drop bleibt erhalten)
     var config = {
       draggable: true,
       position: 'start',
-      // Pfad zu den Bildern angepasst an "chesspieces/wikipedia/"
+      // Angepasster Pfad zu den Figuren (z. B. in "chesspieces/")
       pieceTheme: 'chesspieces/{piece}.png',
       onDragStart: function(source, piece) {
+        // Verhindere Züge, wenn KI denkt, Spiel vorbei oder falsche Figur ausgewählt
         if (aiThinking || game.game_over() ||
             (game.turn() === 'w' && piece.indexOf('b') === 0) ||
             (game.turn() === 'b' && piece.indexOf('w') === 0)) {
@@ -158,6 +199,7 @@
         });
         if (move === null) return 'snapback';
         board.position(game.fen());
+        // Nach einem Spielerzug wird die KI aktiviert
         setTimeout(makeAIMove, 250);
       },
       onSnapEnd: function() {
@@ -167,9 +209,65 @@
 
     board = Chessboard('board', config);
 
+    // Klick-Event für die Felder (unterstützt Auswahl und Ausführung eines Zugs)
+    $('#board').on('click', '.square-55d63', function() {
+      if (aiThinking || game.game_over()) return;
+
+      var square = $(this).attr('data-square');
+      var clickedPiece = game.get(square);
+
+      // Kein Quadrat ausgewählt: Wähle eine eigene Figur aus, falls vorhanden.
+      if (!selectedSquare) {
+        if (clickedPiece && clickedPiece.color === game.turn()) {
+          selectedSquare = square;
+          legalMoves = game.moves({ square: square, verbose: true }).map(function(move) { return move.to; });
+          $(this).addClass('selected-square');
+          highlightSquares(legalMoves);
+        }
+      } else {
+        // Wenn auf das gleiche Feld geklickt wird, Auswahl aufheben.
+        if (square === selectedSquare) {
+          selectedSquare = null;
+          legalMoves = [];
+          removeHighlights();
+          return;
+        }
+        // Wenn auf eine eigene Figur geklickt wird, wird die Auswahl gewechselt.
+        if (clickedPiece && clickedPiece.color === game.turn()) {
+          selectedSquare = square;
+          legalMoves = game.moves({ square: square, verbose: true }).map(function(move) { return move.to; });
+          removeHighlights();
+          $(this).addClass('selected-square');
+          highlightSquares(legalMoves);
+          return;
+        }
+        // Wurde ein legaler Zug (markiertes Feld) angeklickt, führe den Zug aus.
+        if (legalMoves.indexOf(square) !== -1) {
+          var move = game.move({
+            from: selectedSquare,
+            to: square,
+            promotion: 'q'
+          });
+          if (move !== null) {
+            board.position(game.fen());
+            // Starte nach einem gültigen Zug den KI-Zug.
+            setTimeout(makeAIMove, 250);
+          }
+        }
+        // Auswahl und Markierungen zurücksetzen
+        selectedSquare = null;
+        legalMoves = [];
+        removeHighlights();
+      }
+    });
+
+    // Reset-Knopf: Setzt Spiel und Brett zurück
     document.getElementById("resetBtn").addEventListener("click", function() {
       game.reset();
       board.start();
+      selectedSquare = null;
+      legalMoves = [];
+      removeHighlights();
     });
   </script>
 </body>
