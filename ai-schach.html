@@ -98,7 +98,6 @@
       }
       var moves = gameInstance.moves();
       var bestMove = null;
-
       if (isMaximizingPlayer) {
         var maxEval = -Infinity;
         for (var i = 0; i < moves.length; i++) {
@@ -134,6 +133,7 @@
       return minimax(gameInstance, depth, -Infinity, Infinity, gameInstance.turn() === 'w')[1];
     }
 
+    // KI-Zug: Verringerte Verzögerung (50ms statt 250ms)
     function makeAIMove() {
       if (game.game_over()) return;
       aiThinking = true;
@@ -158,8 +158,10 @@
         }
         game.move(move);
         board.position(game.fen());
+        // Nach jedem Zug die draggable-Option (distance) aktualisieren
+        updateDraggableOptions();
         aiThinking = false;
-      }, 250);
+      }, 50);
     }
 
     // Funktionen zum Markieren und Entfernen der Zugpunkte
@@ -175,6 +177,13 @@
     function removeHighlights() {
       $('#board .legal-move').remove();
       $('#board .square-55d63').removeClass('selected-square');
+    }
+
+    // Aktualisiert die jQuery UI draggable-Option, sodass ein kleiner Mausbewegungsabstand
+    // notwendig ist, bevor ein Drag gestartet wird. So werden Klicks besser erkannt.
+    function updateDraggableOptions() {
+      // Setze "distance" auf 10 Pixel für alle Figuren
+      $('#board .piece').draggable("option", "distance", 10);
     }
 
     // Konfiguration des Schachbretts (Drag & Drop bleibt erhalten)
@@ -199,24 +208,27 @@
         });
         if (move === null) return 'snapback';
         board.position(game.fen());
-        // Nach einem Spielerzug wird die KI aktiviert
-        setTimeout(makeAIMove, 250);
+        // Aktualisiere draggable-Option, da sich die Figuren neu positionieren
+        updateDraggableOptions();
+        // Starte den KI-Zug mit verkürzter Verzögerung
+        setTimeout(makeAIMove, 50);
       },
       onSnapEnd: function() {
         board.position(game.fen());
+        updateDraggableOptions();
       }
     };
 
     board = Chessboard('board', config);
+    updateDraggableOptions();
 
     // Klick-Event für die Felder (unterstützt Auswahl und Ausführung eines Zugs)
     $('#board').on('click', '.square-55d63', function() {
       if (aiThinking || game.game_over()) return;
-
       var square = $(this).attr('data-square');
       var clickedPiece = game.get(square);
 
-      // Kein Quadrat ausgewählt: Wähle eine eigene Figur aus, falls vorhanden.
+      // Falls noch keine Auswahl getroffen wurde und eine eigene Figur vorhanden ist…
       if (!selectedSquare) {
         if (clickedPiece && clickedPiece.color === game.turn()) {
           selectedSquare = square;
@@ -225,14 +237,14 @@
           highlightSquares(legalMoves);
         }
       } else {
-        // Wenn auf das gleiche Feld geklickt wird, Auswahl aufheben.
+        // Auswahl aufheben, wenn auf dasselbe Feld geklickt wird
         if (square === selectedSquare) {
           selectedSquare = null;
           legalMoves = [];
           removeHighlights();
           return;
         }
-        // Wenn auf eine eigene Figur geklickt wird, wird die Auswahl gewechselt.
+        // Wechsel der Auswahl, wenn eine andere eigene Figur geklickt wird
         if (clickedPiece && clickedPiece.color === game.turn()) {
           selectedSquare = square;
           legalMoves = game.moves({ square: square, verbose: true }).map(function(move) { return move.to; });
@@ -241,7 +253,7 @@
           highlightSquares(legalMoves);
           return;
         }
-        // Wurde ein legaler Zug (markiertes Feld) angeklickt, führe den Zug aus.
+        // Wurde ein legal markiertes Zielfeld angeklickt, führe den Zug aus.
         if (legalMoves.indexOf(square) !== -1) {
           var move = game.move({
             from: selectedSquare,
@@ -250,11 +262,10 @@
           });
           if (move !== null) {
             board.position(game.fen());
-            // Starte nach einem gültigen Zug den KI-Zug.
-            setTimeout(makeAIMove, 250);
+            updateDraggableOptions();
+            setTimeout(makeAIMove, 50);
           }
         }
-        // Auswahl und Markierungen zurücksetzen
         selectedSquare = null;
         legalMoves = [];
         removeHighlights();
@@ -268,6 +279,7 @@
       selectedSquare = null;
       legalMoves = [];
       removeHighlights();
+      updateDraggableOptions();
     });
   </script>
 </body>
