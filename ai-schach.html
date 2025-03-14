@@ -11,10 +11,12 @@
       text-align: center;
       margin: 20px;
     }
+    /* Das Brett soll nicht scrollen – Touch-Interaktionen unterbinden */
     #board {
       width: 90vw;
       max-width: 500px;
       margin: 20px auto;
+      touch-action: none;
     }
     #controls {
       margin-top: 10px;
@@ -24,11 +26,11 @@
       font-size: 16px;
       margin: 5px;
     }
-    /* Damit die Overlays korrekt positioniert werden */
+    /* Für die Overlays (legal move markers) braucht jedes Quadrat eine relative Position */
     #board .square-55d63 {
       position: relative;
     }
-    /* Stil für die legalen Zugmarkierungen (dunkelgraue Kreise) */
+    /* Legal Move Marker: dunkelgraue Kreise */
     .legal-move {
       width: 20px;
       height: 20px;
@@ -40,7 +42,7 @@
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
-    /* Optional: Markierung der ausgewählten Figur (Rahmen) */
+    /* Markierung der ausgewählten Figur */
     .selected-square {
       box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.5);
     }
@@ -65,16 +67,20 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
 
   <script>
+    // Verhindere Touch-Scrolling im Brettbereich
+    document.getElementById('board').addEventListener('touchmove', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+
     var board = null;
     var game = new Chess();
     var aiThinking = false;
     var difficultySelect = document.getElementById("difficulty");
-
     // Globale Variablen für Klick-Zugsteuerung
     var selectedSquare = null;
     var legalMoves = [];
 
-    // Bewertungsfunktion: Materialsumme
+    // Bewertungsfunktion (Materialwert der Figuren)
     function evaluateBoard(gameInstance) {
       var boardArray = gameInstance.board();
       var totalEvaluation = 0;
@@ -91,7 +97,7 @@
       return totalEvaluation;
     }
 
-    // Minimax mit Alpha-Beta-Pruning
+    // Minimax-Algorithmus mit Alpha-Beta-Pruning
     function minimax(gameInstance, depth, alpha, beta, isMaximizingPlayer) {
       if (depth === 0 || gameInstance.game_over()) {
         return [evaluateBoard(gameInstance), null];
@@ -133,7 +139,7 @@
       return minimax(gameInstance, depth, -Infinity, Infinity, gameInstance.turn() === 'w')[1];
     }
 
-    // KI-Zug: Verringerte Verzögerung (50ms statt 250ms)
+    // KI-Zug – hier mit kurzer Verzögerung (50 ms)
     function makeAIMove() {
       if (game.game_over()) return;
       aiThinking = true;
@@ -158,13 +164,12 @@
         }
         game.move(move);
         board.position(game.fen());
-        // Nach jedem Zug die draggable-Option (distance) aktualisieren
         updateDraggableOptions();
         aiThinking = false;
       }, 50);
     }
 
-    // Funktionen zum Markieren und Entfernen der Zugpunkte
+    // Markiert die legalen Zielfelder (dunkelgraue Kreise)
     function highlightSquares(squares) {
       removeHighlights();
       squares.forEach(function(sq) {
@@ -179,21 +184,18 @@
       $('#board .square-55d63').removeClass('selected-square');
     }
 
-    // Aktualisiert die jQuery UI draggable-Option, sodass ein kleiner Mausbewegungsabstand
-    // notwendig ist, bevor ein Drag gestartet wird. So werden Klicks besser erkannt.
+    // Setzt die Drag‑Option "distance" (auf 30 Pixel), damit kleine Bewegungen nicht als Drag registriert werden
     function updateDraggableOptions() {
-      // Setze "distance" auf 10 Pixel für alle Figuren
-      $('#board .piece').draggable("option", "distance", 10);
+      $('#board .piece').draggable("option", "distance", 30);
     }
 
     // Konfiguration des Schachbretts (Drag & Drop bleibt erhalten)
     var config = {
       draggable: true,
       position: 'start',
-      // Angepasster Pfad zu den Figuren (z. B. in "chesspieces/")
+      // Passe den Pfad zu den Figuren an – in diesem Beispiel liegen sie in "chesspieces/"
       pieceTheme: 'chesspieces/{piece}.png',
       onDragStart: function(source, piece) {
-        // Verhindere Züge, wenn KI denkt, Spiel vorbei oder falsche Figur ausgewählt
         if (aiThinking || game.game_over() ||
             (game.turn() === 'w' && piece.indexOf('b') === 0) ||
             (game.turn() === 'b' && piece.indexOf('w') === 0)) {
@@ -208,9 +210,7 @@
         });
         if (move === null) return 'snapback';
         board.position(game.fen());
-        // Aktualisiere draggable-Option, da sich die Figuren neu positionieren
         updateDraggableOptions();
-        // Starte den KI-Zug mit verkürzter Verzögerung
         setTimeout(makeAIMove, 50);
       },
       onSnapEnd: function() {
@@ -222,14 +222,14 @@
     board = Chessboard('board', config);
     updateDraggableOptions();
 
-    // Klick-Event für die Felder (unterstützt Auswahl und Ausführung eines Zugs)
+    // Klick-Event: Auswahl einer Figur und Durchführung eines Zugs per Klick
     $('#board').on('click', '.square-55d63', function() {
       if (aiThinking || game.game_over()) return;
       var square = $(this).attr('data-square');
       var clickedPiece = game.get(square);
-
-      // Falls noch keine Auswahl getroffen wurde und eine eigene Figur vorhanden ist…
+      
       if (!selectedSquare) {
+        // Wurde eine eigene Figur geklickt, dann wähle sie aus und zeige legalen Zielfelder an
         if (clickedPiece && clickedPiece.color === game.turn()) {
           selectedSquare = square;
           legalMoves = game.moves({ square: square, verbose: true }).map(function(move) { return move.to; });
@@ -237,14 +237,13 @@
           highlightSquares(legalMoves);
         }
       } else {
-        // Auswahl aufheben, wenn auf dasselbe Feld geklickt wird
+        // Bei erneutem Klick auf die selektierte Figur oder beim Wechsel zu einer anderen eigenen Figur
         if (square === selectedSquare) {
           selectedSquare = null;
           legalMoves = [];
           removeHighlights();
           return;
         }
-        // Wechsel der Auswahl, wenn eine andere eigene Figur geklickt wird
         if (clickedPiece && clickedPiece.color === game.turn()) {
           selectedSquare = square;
           legalMoves = game.moves({ square: square, verbose: true }).map(function(move) { return move.to; });
@@ -253,7 +252,7 @@
           highlightSquares(legalMoves);
           return;
         }
-        // Wurde ein legal markiertes Zielfeld angeklickt, führe den Zug aus.
+        // Wird auf ein markiertes Feld geklickt, so führe den Zug aus
         if (legalMoves.indexOf(square) !== -1) {
           var move = game.move({
             from: selectedSquare,
@@ -272,7 +271,6 @@
       }
     });
 
-    // Reset-Knopf: Setzt Spiel und Brett zurück
     document.getElementById("resetBtn").addEventListener("click", function() {
       game.reset();
       board.start();
