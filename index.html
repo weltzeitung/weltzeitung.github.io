@@ -11,7 +11,6 @@
       padding: 20px;
       background: #f0f0f0;
     }
-    /* Header-Bereich über allen Kategorien */
     .header-container {
       display: flex;
       justify-content: space-between;
@@ -29,7 +28,6 @@
       font-size: 0.9em;
       color: #555;
     }
-    /* Kategorien */
     .category {
       margin-bottom: 30px;
       background: #fff;
@@ -59,161 +57,89 @@
       color: #007BFF;
       font-weight: bold;
     }
-    /* Container für Zeitstempel und zusätzlichen Text */
     .right {
       margin-left: auto;
       text-align: right;
     }
-    .timestamp, .extra {
+    .timestamp {
       display: block;
       font-size: 0.9em;
       color: #555;
     }
+    .footer {
+      margin-top: 30px;
+      padding: 15px;
+      text-align: center;
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
-  <!-- Header über allen Kategorien -->
   <div class="header-container">
     <h2>Meine Links</h2>
-    <div class="last-modified">zuletzt geändert:</div>
+    <div class="last-modified">zuletzt geändert: <span class="timestamp" data-date="2025-03-14">placeholder</span></div>
   </div>
   
-  <!-- Kategorie: AI Spiele -->
   <div class="category">
     <h2>AI Spiele</h2>
     <ul>
-      <li>
-        <a href="ai-breakthrough.html">ai-breakthrough.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-12">placeholder</span>
-          <!-- Optionaler zusätzlicher Textbaustein -->
-        </div>
-      </li>
-      <li>
-        <a href="ai-dame.html">ai-dame.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-12">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="ai-dotsandboxes.html">ai-dotsandboxes.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-12">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="ai-gomoku.html">ai-gomoku.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-12">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="ai-isolation.html">ai-isolation.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-12">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="ai-mancala.html">ai-mancala.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-12">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="ai-meta-tictactoe.html">ai-meta-tictactoe.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-12">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="ai-nim.html">ai-nim.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-12">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="ai-orthello.html">ai-orthello.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-12">placeholder</span>
-        </div>
-      </li>
+      <li><a href="ai-ataxx.html">ai-ataxx.html</a><div class="right"><span class="timestamp" data-date="2025-03-13"></span></div></li>
+      <li><a href="ai-breakthrough.html">ai-breakthrough.html</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-dame.html">ai-dame.html</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-dotsandboxes.html">ai-dotsandboxes.html</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-gomoku.html">ai-gomoku.html</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-isolation.html">ai-isolation.html</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-mancala.html">ai-mancala.html</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-meta-tictactoe.html">ai-meta-tictactoe.html</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-nim.html">ai-nim.html</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-orthello.html">ai-orthello.html</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-pawn-battle.html">ai-pawn-battle.html</a><div class="right"><span class="timestamp" data-date="2025-03-13"></span></div></li>
+      <li><a href="ai-schach.html">ai-schach.html</a><div class="right"><span class="timestamp" data-date="2025-03-14"></span></div></li>
     </ul>
   </div>
-  
-  <!-- Kategorie: Klassische Spiele -->
+
   <div class="category">
     <h2>Klassische Spiele</h2>
     <ul>
-      <li>
-        <a href="meta-tictactoe.html">meta-tictactoe.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-10">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="tictactoe.html">tictactoe.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-12">placeholder</span>
-        </div>
-      </li>
+      <li><a href="meta-tictactoe.html">meta-tictactoe.html</a><div class="right"><span class="timestamp" data-date="2025-03-10"></span></div></li>
+      <li><a href="tictactoe.html">tictactoe.html</a><div class="right"><span class="timestamp" data-date="2025-03-10"></span></div></li>
     </ul>
   </div>
-  
-  <!-- Kategorie: Sonstiges -->
+
   <div class="category">
     <h2>Sonstiges</h2>
     <ul>
-      <li>
-        <a href="fake-zeitung.html">fake-zeitung.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-10">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="impressum.html">impressum.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-10">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="index.html">index.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-10">placeholder</span>
-        </div>
-      </li>
-      <li>
-        <a href="städte-kaufen.html">städte-kaufen.html</a>
-        <div class="right">
-          <span class="timestamp" data-date="2025-03-05">placeholder</span>
-        </div>
-      </li>
+      <li><a href="fake-zeitung.html">fake-zeitung.html</a><div class="right"><span class="timestamp" data-date="2025-03-10"></span></div></li>
+      <li><a href="städte-kaufen.html">städte-kaufen.html</a><div class="right"><span class="timestamp" data-date="2025-03-07"></span></div></li>
     </ul>
   </div>
-  
+
+  <div class="footer">
+    <a href="impressum.html">Impressum</a>
+  </div>
+
   <script>
-    // Diese Funktion berechnet, wie viele Tage seit dem angegebenen Datum vergangen sind.
-    // Ist der Unterschied > 6 Tage, wird das Datum (im deutschen Format) angezeigt,
-    // ansonsten "heute", "gestern" oder "x Tage her".
     function updateTimestamps() {
       const spans = document.querySelectorAll('.timestamp');
       spans.forEach(span => {
         const dateString = span.getAttribute('data-date');
         const givenDate = new Date(dateString);
         const today = new Date();
-        // Beide Daten auf Mitternacht setzen, um nur ganze Tage zu berücksichtigen
         const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const givenMidnight = new Date(givenDate.getFullYear(), givenDate.getMonth(), givenDate.getDate());
         const diffMs = todayMidnight - givenMidnight;
         const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
         
-        if(diffDays > 6) {
-          span.textContent = givenDate.toLocaleDateString("de-DE");
-        } else if(diffDays === 0) {
+        if (diffDays === 0) {
           span.textContent = "heute";
-        } else if(diffDays === 1) {
+        } else if (diffDays === 1) {
           span.textContent = "gestern";
-        } else {
+        } else if (diffDays < 7) {
           span.textContent = diffDays + " Tage her";
+        } else {
+          span.textContent = givenDate.toLocaleDateString("de-DE");
         }
       });
     }
