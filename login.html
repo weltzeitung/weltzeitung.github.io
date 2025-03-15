@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stadt kaufen - Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    
+    .login-container {
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+    
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    input[type="email"],
+    input[type="password"] {
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+    
+    .submit-btn, .google-btn {
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    
+    .submit-btn {
+      background-color: #2196F3;
+      color: #fff;
+    }
+    
+    .submit-btn:hover {
+      background-color: #1976D2;
+    }
+    
+    .google-btn {
+      background-color: #dd4b39;
+      color: #fff;
+    }
+    
+    .google-btn:hover {
+      background-color: #c23321;
+    }
+    
+    .back-link {
+      margin-top: 15px;
+      display: inline-block;
+      color: #2196F3;
+      text-decoration: none;
+    }
+    
+    @media only screen and (max-width: 768px) {
+      h2 {
+        font-size: 1.5rem;
+      }
+      input[type="email"],
+      input[type="password"] {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h2 id="pageTitle">Stadt kaufen</h2>
+    <form>
+      <input type="email" placeholder="Email" required>
+      <input type="password" placeholder="Passwort" required>
+      <button type="submit" class="submit-btn">Kauf abschließen</button>
+    </form>
+    <button class="google-btn">Mit Google anmelden</button>
+    <br>
+    <a href="index.html" class="back-link">Zurück zum Shop</a>
+  </div>
+
+  <script>
+    // Optional: Den Stadtnamen aus der URL auslesen und anzeigen
+    const params = new URLSearchParams(window.location.search);
+    const city = params.get('city');
+    if(city) {
+      document.getElementById('pageTitle').textContent = city + " kaufen";
+    }
+  </script>
+</body>
+</html>
