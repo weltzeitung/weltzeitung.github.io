@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOS Spiel gegen KI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background: #f4f4f4;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    #controls {
+      margin: 10px;
+    }
+    .letter-button {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 1em;
+    }
+    .selected {
+      background: #4CAF50;
+      color: white;
+    }
+    #scoreboard {
+      margin: 10px;
+      font-size: 1.2em;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      grid-gap: 5px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+    .cell {
+      width: 60px;
+      height: 60px;
+      background: #fff;
+      border: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .cell:hover {
+      background: #e9e9e9;
+    }
+    #message {
+      margin-top: 10px;
+      font-size: 1.1em;
+      min-height: 1.2em;
+    }
+    @media (max-width: 600px) {
+      #board {
+        grid-template-columns: repeat(5, 50px);
+      }
+      .cell {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>SOS Spiel gegen KI</h1>
+  <div id="controls">
+    <label>Buchstabe wählen:</label>
+    <button id="selectS" class="letter-button selected">S</button>
+    <button id="selectO" class="letter-button">O</button>
+    <label style="margin-left:10px;">Schwierigkeitsgrad:</label>
+    <select id="difficulty">
+      <option value="easy">Einfach</option>
+      <option value="medium">Mittel</option>
+      <option value="hard">Schwer</option>
+    </select>
+    <button id="reset">Reset</button>
+  </div>
+  <div id="scoreboard">
+    <span id="playerScore">Spieler: 0</span>
+    <span id="aiScore" style="margin-left:20px;">KI: 0</span>
+  </div>
+  <div id="message"></div>
+  <div id="game-container">
+    <div id="board"></div>
+  </div>
+
+  <script>
+    // --- Globale Variablen und Einstellungen ---
+    const rows = 5, cols = 5;
+    let board = [];
+    let currentPlayer = 'human'; // 'human' oder 'ai'
+    let playerScore = 0, aiScore = 0;
+    let currentLetter = 'S';
+    let gameOver = false;
+    let aiThinking = false;
+    const maxDepth = 4; // Tiefenlimit für minimax (anpassbar)
+
+    const boardElement = document.getElementById('board');
+    const playerScoreElement = document.getElementById('playerScore');
+    const aiScoreElement = document.getElementById('aiScore');
+    const messageElement = document.getElementById('message');
+    const difficultySelect = document.getElementById('difficulty');
+
+    // --- Initialisierung des Spiels ---
+    function initGame() {
+      board = [];
+      for (let r = 0; r < rows; r++) {
+        board[r] = [];
+        for (let c = 0; c < cols; c++) {
+          board[r][c] = '';
+        }
+      }
+      currentPlayer = 'human';
+      playerScore = 0;
+      aiScore = 0;
+      gameOver = false;
+      aiThinking = false;
+      updateScoreboard();
+      messageElement.textContent = "Dein Zug.";
+      renderBoard();
+    }
+
+    // --- Rendern des Spielbretts ---
+    function renderBoard() {
+      boardElement.innerHTML = '';
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.textContent = board[r][c];
+          cell.addEventListener('click', onCellClick);
+          boardElement.appendChild(cell);
+        }
+      }
+    }
+
+    // --- Klick auf ein Feld (Spielerzug) ---
+    function onCellClick(e) {
+      if (gameOver || currentPlayer !== 'human' || aiThinking) return;
+      const r = parseInt(e.target.dataset.row);
+      const c = parseInt(e.target.dataset.col);
+      if (board[r][c] !== '') return;
+      makeMove(r, c, currentLetter, 'human');
+    }
+
+    // --- Ausführen eines Zugs ---
+    function makeMove(r, c, letter, player) {
+      board[r][c] = letter;
+      renderBoard();
+      const scoreGained = checkScore(r, c, letter);
+      if (player === 'human') {
+        playerScore += scoreGained;
+      } else {
+        aiScore += scoreGained;
+      }
+      updateScoreboard();
+
+      // Überprüfe, ob der Zug einen Punkt(er) bringt – bei mindestens einem Punkt bleibt derselbe Spieler dran
+      if (scoreGained > 0) {
+        messageElement.textContent = player === 'human' ? "Punkt! Du darfst nochmal ziehen." : "KI punktet und zieht weiter.";
+      } else {
+        currentPlayer = (player === 'human') ? 'ai' : 'human';
+      }
+      checkGameOver();
+      if (!gameOver) {
+        if (currentPlayer === 'human') {
+          messageElement.textContent = "Dein Zug.";
+        } else {
+          messageElement.textContent = "KI denkt...";
+          setTimeout(aiMove, 500);
+        }
+      }
+    }
+
+    // --- Punkteüberprüfung: Sucht in allen 8 Richtungen nach "SOS" ---
+    function checkScore(r, c, letter) {
+      let points = 0;
+      const directions = [
+        {dx: 0, dy: 1}, {dx: 1, dy: 0},
+        {dx: 1, dy: 1}, {dx: 1, dy: -1},
+        {dx: 0, dy: -1}, {dx: -1, dy: 0},
+        {dx: -1, dy: -1}, {dx: -1, dy: 1}
+      ];
+      directions.forEach(dir => {
+        // Möglichkeit 1: (r, c) als erster Buchstabe: [r,c], [r+dx,c+dy], [r+2dx,c+2dy]
+        if (inBounds(r+dir.dx, c+dir.dy) && inBounds(r+2*dir.dx, c+2*dir.dy)) {
+          if (board[r][c] === 'S' &&
+              board[r+dir.dx][c+dir.dy] === 'O' &&
+              board[r+2*dir.dx][c+2*dir.dy] === 'S') {
+            points++;
+          }
+        }
+        // Möglichkeit 2: (r, c) als mittlerer Buchstabe: [r-dx,c-dy], [r,c], [r+dx,c+dy]
+        if (inBounds(r-dir.dx, c-dir.dy) && inBounds(r+dir.dx, c+dir.dy)) {
+          if (board[r-dir.dx][c-dir.dy] === 'S' &&
+              board[r][c] === 'O' &&
+              board[r+dir.dx][c+dir.dy] === 'S') {
+            points++;
+          }
+        }
+        // Möglichkeit 3: (r, c) als letzter Buchstabe: [r-2dx,c-2dy], [r-dx,c-dy], [r,c]
+        if (inBounds(r-2*dir.dx, c-2*dir.dy) && inBounds(r-dir.dx, c-dir.dy)) {
+          if (board[r-2*dir.dx][c-2*dir.dy] === 'S' &&
+              board[r-dir.dx][c-dir.dy] === 'O' &&
+              board[r][c] === 'S') {
+            points++;
+          }
+        }
+      });
+      return points;
+    }
+
+    function inBounds(r, c) {
+      return r >= 0 && r < rows && c >= 0 && c < cols;
+    }
+
+    // --- Aktualisieren der Anzeige der Punktestände ---
+    function updateScoreboard() {
+      playerScoreElement.textContent = "Spieler: " + playerScore;
+      aiScoreElement.textContent = "KI: " + aiScore;
+    }
+
+    // --- Überprüfung auf Spielende ---
+    function checkGameOver() {
+      let full = true;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (board[r][c] === '') {
+            full = false;
+            break;
+          }
+        }
+      }
+      if (full) {
+        gameOver = true;
+        let msg = "Spiel vorbei. ";
+        if (playerScore > aiScore) msg += "Du hast gewonnen!";
+        else if (aiScore > playerScore) msg += "Die KI hat gewonnen!";
+        else msg += "Unentschieden!";
+        messageElement.textContent = msg;
+      }
+    }
+
+    // --- KI-Zug ---
+    function aiMove() {
+      if (gameOver) return;
+      aiThinking = true;
+      const diff = difficultySelect.value;
+      let move;
+      if (diff === 'easy') {
+        move = getRandomMove();
+      } else if (diff === 'medium') {
+        move = getImmediateScoreMove() || getRandomMove();
+      } else if (diff === 'hard') {
+        move = getBestMove();
+        if (!move) move = getRandomMove();
+      }
+      // Führe den Zug aus (simuliere kurze Denkzeit)
+      setTimeout(() => {
+        aiThinking = false;
+        if (move) {
+          makeMove(move.r, move.c, move.letter, 'ai');
+        }
+      }, 300);
+    }
+
+    // --- Liefert einen zufälligen gültigen Zug ---
+    function getRandomMove() {
+      const moves = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (board[r][c] === '') {
+            moves.push({r, c, letter: 'S'});
+            moves.push({r, c, letter: 'O'});
+          }
+        }
+      }
+      if (moves.length === 0) return null;
+      return moves[Math.floor(Math.random() * moves.length)];
+    }
+
+    // --- Sucht einen Zug, der sofort Punkte bringt (falls vorhanden) ---
+    function getImmediateScoreMove() {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (board[r][c] === '') {
+            for (let letter of ['S', 'O']) {
+              board[r][c] = letter;
+              if (checkScore(r, c, letter) > 0) {
+                board[r][c] = ''; // rückgängig machen
+                return {r, c, letter};
+              }
+              board[r][c] = '';
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    // --- Minimaxi-Implementierung mit Alpha-Beta-Pruning ---
+    function getBestMove() {
+      const state = cloneState();
+      const result = minimax(state, maxDepth, -Infinity, Infinity);
+      return result.move;
+    }
+
+    function minimax(state, depth, alpha, beta) {
+      if (depth === 0 || isTerminalState(state)) {
+        return { score: evaluateState(state), move: null };
+      }
+      let bestMove = null;
+      if (state.currentPlayer === 'ai') {
+        let maxEval = -Infinity;
+        for (const move of getValidMoves(state)) {
+          const newState = applyMove(cloneState(state), move);
+          const evalResult = minimax(newState, depth - 1, alpha, beta).score;
+          if (evalResult > maxEval) {
+            maxEval = evalResult;
+            bestMove = move;
+          }
+          alpha = Math.max(alpha, evalResult);
+          if (beta <= alpha) break;
+        }
+        return { score: maxEval, move: bestMove };
+      } else { // menschliche Seite minimiert
+        let minEval = Infinity;
+        for (const move of getValidMoves(state)) {
+          const newState = applyMove(cloneState(state), move);
+          const evalResult = minimax(newState, depth - 1, alpha, beta).score;
+          if (evalResult < minEval) {
+            minEval = evalResult;
+            bestMove = move;
+          }
+          beta = Math.min(beta, evalResult);
+          if (beta <= alpha) break;
+        }
+        return { score: minEval, move: bestMove };
+      }
+    }
+
+    // --- Zustandshandhabung für minimax ---
+    function cloneState(state) {
+      // Falls kein Zustand übergeben wird, klone den aktuellen Zustand
+      state = state || {
+        board: board.map(row => row.slice()),
+        currentPlayer: currentPlayer,
+        playerScore: playerScore,
+        aiScore: aiScore
+      };
+      return {
+        board: state.board.map(row => row.slice()),
+        currentPlayer: state.currentPlayer,
+        playerScore: state.playerScore,
+        aiScore: state.aiScore
+      };
+    }
+
+    function getValidMoves(state) {
+      const moves = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (state.board[r][c] === '') {
+            moves.push({ r, c, letter: 'S' });
+            moves.push({ r, c, letter: 'O' });
+          }
+        }
+      }
+      return moves;
+    }
+
+    function applyMove(state, move) {
+      state.board[move.r][move.c] = move.letter;
+      // Ermittle Punkte durch den Zug:
+      const points = checkScoreState(state.board, move.r, move.c, move.letter);
+      if (state.currentPlayer === 'ai') {
+        state.aiScore += points;
+      } else {
+        state.playerScore += points;
+      }
+      // Wenn keine Punkte erzielt wurden, wechsle den Spieler
+      if (points === 0) {
+        state.currentPlayer = state.currentPlayer === 'ai' ? 'human' : 'ai';
+      }
+      return state;
+    }
+
+    // --- Hilfsfunktion für die Zustandsauswertung (minimax) ---
+    function checkScoreState(b, r, c, letter) {
+      let pts = 0;
+      const directions = [
+        {dx: 0, dy: 1}, {dx: 1, dy: 0},
+        {dx: 1, dy: 1}, {dx: 1, dy: -1},
+        {dx: 0, dy: -1}, {dx: -1, dy: 0},
+        {dx: -1, dy: -1}, {dx: -1, dy: 1}
+      ];
+      directions.forEach(dir => {
+        if (inBoundsState(b, r+dir.dx, c+dir.dy) && inBoundsState(b, r+2*dir.dx, c+2*dir.dy)) {
+          if (b[r][c] === 'S' &&
+              b[r+dir.dx][c+dir.dy] === 'O' &&
+              b[r+2*dir.dx][c+2*dir.dy] === 'S') {
+            pts++;
+          }
+        }
+        if (inBoundsState(b, r-dir.dx, c-dir.dy) && inBoundsState(b, r+dir.dx, c+dir.dy)) {
+          if (b[r-dir.dx][c-dir.dy] === 'S' &&
+              b[r][c] === 'O' &&
+              b[r+dir.dx][c+dir.dy] === 'S') {
+            pts++;
+          }
+        }
+        if (inBoundsState(b, r-2*dir.dx, c-2*dir.dy) && inBoundsState(b, r-dir.dx, c-dir.dy)) {
+          if (b[r-2*dir.dx][c-2*dir.dy] === 'S' &&
+              b[r-dir.dx][c-dir.dy] === 'O' &&
+              b[r][c] === 'S') {
+            pts++;
+          }
+        }
+      });
+      return pts;
+    }
+
+    function inBoundsState(b, r, c) {
+      return r >= 0 && r < rows && c >= 0 && c < cols;
+    }
+
+    function isTerminalState(state) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (state.board[r][c] === '') return false;
+        }
+      }
+      return true;
+    }
+
+    // Bewertungsfunktion: Differenz (KI - Spieler)
+    function evaluateState(state) {
+      return state.aiScore - state.playerScore;
+    }
+
+    // --- Event Listener für Buchstabenwahl und Reset ---
+    document.getElementById('selectS').addEventListener('click', () => {
+      currentLetter = 'S';
+      document.getElementById('selectS').classList.add('selected');
+      document.getElementById('selectO').classList.remove('selected');
+    });
+    document.getElementById('selectO').addEventListener('click', () => {
+      currentLetter = 'O';
+      document.getElementById('selectO').classList.add('selected');
+      document.getElementById('selectS').classList.remove('selected');
+    });
+    document.getElementById('reset').addEventListener('click', initGame);
+
+    // --- Spielstart ---
+    initGame();
+  </script>
+</body>
+</html>
