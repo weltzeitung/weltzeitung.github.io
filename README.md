@@ -1,2 +1,2 @@
 # weltzeitung.github.io
-A fake news page to prank friends.
+A page with a variety of my private projects.
