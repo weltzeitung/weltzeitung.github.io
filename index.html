@@ -2,213 +2,150 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Städte Kaufen - Webshop</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Startseite</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f2f2f2;
       margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      flex-direction: column;
-    }
-    
-    .container {
-      width: 90%;
-      max-width: 1200px;
-      text-align: center;
-      margin: 20px;
-    }
-    
-    h1 {
-      font-size: 3rem;
-      color: #333;
-      margin-bottom: 10px;
-    }
-    
-    p {
-      font-size: 1.2rem;
-      color: #555;
-    }
-    
-    .city-list {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 30px;
-      flex-wrap: wrap;
-    }
-    
-    .city-card {
-      background-color: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      width: 200px;
-      padding: 15px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      margin: 10px;
-      transition: transform 0.2s ease;
-    }
-    
-    .city-card:hover {
-      transform: scale(1.05);
-    }
-    
-    .city-name {
-      font-size: 1.5rem;
-      color: #333;
-    }
-    
-    .city-price {
-      font-size: 1.2rem;
-      color: #4CAF50;
-      margin-top: 10px;
-    }
-    
-    .buy-btn {
-      background-color: #2196F3;
-      color: white;
-      padding: 10px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 15px;
-      transition: background-color 0.3s;
-    }
-    
-    .buy-btn:hover {
-      background-color: #1976D2;
-    }
-    
-    .stock-display {
-      margin-top: 40px;
-      background-color: #fff;
       padding: 20px;
-      border-radius: 10px;
-      width: 100%;
-      max-width: 600px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      background: #f0f0f0;
     }
-    
-    .stock-display h2 {
-      color: #333;
-    }
-    
-    .stock-row {
+    .header-container {
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
       padding: 10px;
-      border-bottom: 1px solid #ddd;
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-    
-    .stock-status {
+    .header-container h2 {
+      margin: 0;
+    }
+    .header-container .last-modified {
+      font-size: 0.9em;
+      color: #555;
+    }
+    .category {
+      margin-bottom: 30px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .category h2 {
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+      margin-bottom: 10px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    li {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+    }
+    li a {
+      text-decoration: none;
+      color: #007BFF;
       font-weight: bold;
     }
-    
-    .stock-up {
-      color: green;
+    .right {
+      margin-left: auto;
+      text-align: right;
     }
-    
-    .stock-down {
-      color: red;
+    .timestamp {
+      display: block;
+      font-size: 0.9em;
+      color: #555;
     }
-    
-    /* Mobile Optimierungen */
-    @media only screen and (max-width: 768px) {
-      h1 {
-        font-size: 2rem;
-      }
-      p {
-        font-size: 1rem;
-      }
-      .city-card {
-        width: 90%;
-      }
+    .footer {
+      margin-top: 30px;
+      padding: 15px;
+      text-align: center;
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Willkommen im Städte-Kauf-Shop</h1>
-    <p>Hier kannst du Städte kaufen! Sieh dir die Angebote an und erhalte live Aktienanzeigen für den besten Kaufzeitpunkt.</p>
+  <div class="header-container">
+    <h2>Links</h2>
+    <div class="last-modified">zuletzt geändert: </div>
+  </div>
+  
+  <div class="category">
+    <h2>AI Spiele</h2>
+    <ul>
+      <li><a href="ai-ataxx.html">AI Ataxx</a><div class="right"><span class="timestamp" data-date="2025-03-13"></span></div></li>
+      <li><a href="ai-breakthrough.html">AI Breakthrough</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-dame.html">AI Dame</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-dotsandboxes.html">AI Dots and Boxes</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-gomoku.html">AI Gomoku</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-isolation.html">AI Isolation</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-mancala.html">AI Mancala</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-meta-tictactoe.html">AI Meta TicTacToe.</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-nim.html">AI Nim</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-orthello.html">AI Orthello</a><div class="right"><span class="timestamp" data-date="2025-03-12"></span></div></li>
+      <li><a href="ai-pawn-battle.html">AI Pawn Battle</a><div class="right"><span class="timestamp" data-date="2025-03-13"></span></div></li>
+      <li><a href="ai-schach.html">AI Schach</a><div class="right"><span class="timestamp" data-date="2025-03-14"></span></div></li>
+      <li><a href="ai-sos.html">AI SOS</a><div class="right"><span class="timestamp" data-date="2025-03-15"></span></div></li>
+    </ul>
+  </div>
 
-    <div class="city-list">
-      <div class="city-card">
-        <div class="city-name">Berlin</div>
-        <div class="city-price">€100</div>
-        <button class="buy-btn" onclick="buyCity('Berlin')">Stadt kaufen</button>
-      </div>
+  <div class="category">
+    <h2>Klassische Spiele</h2>
+    <ul>
+      <li><a href="meta-tictactoe.html">Meta TicTacToe</a><div class="right"><span class="timestamp" data-date="2025-03-10"></span></div></li>
+      <li><a href="tictactoe.html">TicTacToe</a><div class="right"><span class="timestamp" data-date="2025-03-10"></span></div></li>
+    </ul>
+  </div>
 
-      <div class="city-card">
-        <div class="city-name">München</div>
-        <div class="city-price">€200</div>
-        <button class="buy-btn" onclick="buyCity('München')">Stadt kaufen</button>
-      </div>
+  <div class="category">
+    <h2>Sonstiges</h2>
+    <ul>
+      <li><a href="fake-zeitung.html">Fake Zeitung</a><div class="right"><span class="timestamp" data-date="2025-03-10"></span></div></li>
+      <li><a href="städte-kaufen.html">Städte kaufen</a><div class="right"><span class="timestamp" data-date="2025-03-07"></span></div></li>
+    </ul>
+  </div>
 
-      <div class="city-card">
-        <div class="city-name">Hamburg</div>
-        <div class="city-price">€50</div>
-        <button class="buy-btn" onclick="buyCity('Hamburg')">Stadt kaufen</button>
-      </div>
-      
-      <div class="city-card">
-        <div class="city-name">Köln</div>
-        <div class="city-price">€20</div>
-        <button class="buy-btn" onclick="buyCity('Köln')">Stadt kaufen</button>
-      </div>
-    </div>
-
-    <div class="stock-display">
-      <h2>Live-Aktienanzeige</h2>
-      <div class="stock-row">
-        <div>Berlin</div>
-        <div id="berlinStatus" class="stock-status stock-up">+2%</div>
-      </div>
-      <div class="stock-row">
-        <div>München</div>
-        <div id="muenchenStatus" class="stock-status stock-down">-1%</div>
-      </div>
-      <div class="stock-row">
-        <div>Hamburg</div>
-        <div id="hamburgStatus" class="stock-status stock-up">+3%</div>
-      </div>
-      <div class="stock-row">
-        <div>Köln</div>
-        <div id="koelnStatus" class="stock-status stock-up">+0.5%</div>
-      </div>
-    </div>
+  <div class="footer">
+    <a href="impressum.html">Impressum</a>
   </div>
 
   <script>
-    // Leitet zum Kauf-/Login-Formular weiter und übergibt den Stadtnamen per URL-Parameter
-    function buyCity(cityName) {
-      window.location.href = "login.html?city=" + encodeURIComponent(cityName);
-    }
-
-    // Aktualisiert zufällig die Aktienanzeigen
-    function updateStockStatus() {
-      const cities = ['berlin', 'muenchen', 'hamburg', 'koeln'];
-      cities.forEach(city => {
-        const status = Math.random() > 0.5 ? 'up' : 'down';
-        const percent = (Math.random() * 5).toFixed(2);
-        const statusElement = document.getElementById(city + 'Status');
-        statusElement.textContent = (status === 'up' ? '+' : '-') + percent + '%';
-
-        if (status === 'up') {
-          statusElement.classList.remove('stock-down');
-          statusElement.classList.add('stock-up');
+    function updateTimestamps() {
+      const spans = document.querySelectorAll('.timestamp');
+      spans.forEach(span => {
+        const dateString = span.getAttribute('data-date');
+        const givenDate = new Date(dateString);
+        const today = new Date();
+        const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const givenMidnight = new Date(givenDate.getFullYear(), givenDate.getMonth(), givenDate.getDate());
+        const diffMs = todayMidnight - givenMidnight;
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) {
+          span.textContent = "heute";
+        } else if (diffDays === 1) {
+          span.textContent = "gestern";
+        } else if (diffDays < 7) {
+          span.textContent = diffDays + " Tage her";
         } else {
-          statusElement.classList.remove('stock-up');
-          statusElement.classList.add('stock-down');
+          span.textContent = givenDate.toLocaleDateString("de-DE");
         }
       });
     }
-
-    // Aktualisierung alle 5 Sekunden
-    setInterval(updateStockStatus, 5000);
+    
+    document.addEventListener("DOMContentLoaded", updateTimestamps);
   </script>
 </body>
 </html>
