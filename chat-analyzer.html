@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Chat Analyzer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    #fileInput { margin: 20px; }
+    canvas { max-width: 100%; }
+    .container { max-width: 600px; margin: auto; }
+  </style>
+</head>
+<body>
+  <h2>WhatsApp Chat Analyzer</h2>
+  <input type="file" id="fileInput" accept=".txt">
+  <button id="loadButton">Daten Laden</button>
+  <div class="container">
+    <h3>Gesendete Wörter pro Person</h3>
+    <canvas id="wordChart"></canvas>
+    
+    <h3>Häufigste Wörter</h3>
+    <canvas id="commonWordsChart"></canvas>
+  </div>
+
+  <script>
+    document.getElementById("loadButton").addEventListener("click", function() {
+      const fileInput = document.getElementById("fileInput");
+      const file = fileInput.files[0];
+      if (!file) {
+        alert("Bitte wähle zuerst eine Datei aus.");
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        analyzeChat(text);
+      };
+      reader.readAsText(file);
+    });
+
+    function analyzeChat(chatText) {
+      const wordCount = {};
+      const userWordCount = {};
+      const lines = chatText.split("\n");
+
+      // Regex, um den Zeitstempel, den Sender (vollständiger Name oder Telefonnummer) und die Nachricht zu erfassen
+      const regex = /(\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}) - ([^:]+)(?:: )?(.*)/;
+
+      lines.forEach(line => {
+        // Überspringe Systemzeilen (Verschlüsselungshinweise auf Englisch und Deutsch)
+        if (
+          line.includes("Messages and calls are end-to-end encrypted") ||
+          line.includes("Nachrichten und Anrufe sind Ende-zu-Ende verschlüsselt")
+        ) {
+          return;
+        }
+        const match = line.match(regex);
+        if (match) {
+          // Zusammengesetzten Inhalt bilden, um Systemmeldungen (auch ohne Nachrichtentext) zu erfassen
+          const content = (match[2] + " " + match[3]).trim();
+          // Filtere Zeilen, die Systemmeldungen oder unerwünschte Informationen enthalten (Englisch und Deutsch)
+          if (
+            content.includes("Messages and calls are end-to-end encrypted") ||
+            content.includes("<Media omitted>") ||
+            content.includes("This message was deleted") ||
+            content.match(/https?:\/\/\S+/) ||
+            content.match(/created group|added|removed|turned on admin approval|changed this group's|left|erstellt.*Gruppe|hinzugefügt|entfernt|verlassen/gi)
+          ) {
+            return;
+          }
+
+          let user = match[2].trim();
+          if (!user || user === "‎") { // Fallback, falls der Name leer oder nur ein unsichtbares Zeichen ist
+            user = "Du";
+          }
+          let message = match[3];
+
+          const words = message.split(/\s+/);
+          if (!userWordCount[user]) userWordCount[user] = 0;
+          userWordCount[user] += words.length;
+
+          words.forEach(word => {
+            word = word.toLowerCase().replace(/[^a-zäöüß]/g, "");
+            if (word) {
+              if (!wordCount[word]) wordCount[word] = 0;
+              wordCount[word]++;
+            }
+          });
+        }
+      });
+
+      displayCharts(userWordCount, wordCount);
+    }
+
+    function displayCharts(userWordCount, wordCount) {
+      const ctx1 = document.getElementById("wordChart").getContext("2d");
+      new Chart(ctx1, {
+        type: "bar",
+        data: {
+          labels: Object.keys(userWordCount),
+          datasets: [{
+            label: "Gesendete Wörter",
+            data: Object.values(userWordCount),
+            backgroundColor: "rgba(54, 162, 235, 0.5)"
+          }]
+        }
+      });
+
+      const sortedWords = Object.entries(wordCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      const ctx2 = document.getElementById("commonWordsChart").getContext("2d");
+      new Chart(ctx2, {
+        type: "bar",
+        data: {
+          labels: sortedWords.map(w => w[0]),
+          datasets: [{
+            label: "Häufigste Wörter",
+            data: sortedWords.map(w => w[1]),
+            backgroundColor: "rgba(255, 99, 132, 0.5)"
+          }]
+        }
+      });
+    }
+  </script>
+</body>
+</html>
