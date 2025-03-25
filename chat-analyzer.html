@@ -54,6 +54,7 @@
       lines.forEach(line => {
         // Überspringe Systemzeilen (Verschlüsselungshinweise auf Englisch und Deutsch)
         if (
+          line.includes("joined from the community")
           line.includes("Messages and calls are end-to-end encrypted") ||
           line.includes("Nachrichten und Anrufe sind Ende-zu-Ende verschlüsselt")
         ) {
@@ -65,7 +66,6 @@
           const content = (match[2] + " " + match[3]).trim();
           // Filtere Zeilen, die Systemmeldungen oder unerwünschte Informationen enthalten (Englisch und Deutsch)
           if (
-            content.includes("Messages and calls are end-to-end encrypted") ||
             content.includes("<Media omitted>") ||
             content.includes("This message was deleted") ||
             content.match(/https?:\/\/\S+/) ||
